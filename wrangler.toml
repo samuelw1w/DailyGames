@@ -1,0 +1,25 @@
+# One Cloudflare Worker serves the whole site:
+#   /api/*      -> api/src/index.js (the backend)
+#   everything else -> static files in web/ (the hub and the games)
+name = "daily-games"
+main = "api/src/index.js"
+compatibility_date = "2025-09-01"
+
+[assets]
+directory = "./web"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "daily-games"
+# Paste the ID printed by `npx wrangler d1 create daily-games` (see README).
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "api/migrations"
+
+[vars]
+# Only needed if the site is hosted on a different domain from the API, e.g.
+# "https://dailygames.example.com". Comma-separated. Leave empty for same-origin.
+ALLOWED_ORIGINS = ""
+
+[observability]
+enabled = true

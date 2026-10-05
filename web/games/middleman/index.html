@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Middleman · Daily Games</title>
+  <meta name="description" content="A daily game: name the thing halfway between two others by weight, speed, size, age or price.">
+  <link rel="stylesheet" href="../../shared/theme.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="dg-app">
+    <header class="dg-top">
+      <a class="dg-brand" href="../../" aria-label="Back to all games">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="1.5" y="1.5" width="37" height="37" rx="10" fill="#FFFDF7" stroke="#10142E" stroke-width="2.5"/><line x1="8" y1="25" x2="32" y2="25" stroke="#10142E" stroke-width="3" stroke-linecap="round"/><circle cx="8" cy="25" r="3.5" fill="#10142E"/><circle cx="32" cy="25" r="3.5" fill="#10142E"/><rect x="16" y="11" width="8" height="8" rx="1" transform="rotate(45 20 15)" fill="#FF5B3A" stroke="#10142E" stroke-width="2"/><line x1="20" y1="20" x2="20" y2="25" stroke="#10142E" stroke-width="2.5"/></svg>
+        <h1>Middle<span>man</span></h1>
+      </a>
+      <div class="dg-meta">
+        <span class="dg-stamp" id="stamp"></span>
+        <a class="dg-ghost" href="../../">All games</a>
+        <button class="dg-ghost" id="howBtn" type="button">How to play</button>
+      </div>
+    </header>
+
+    <nav class="tracker" id="tracker" aria-label="Rounds"></nav>
+    <main id="view"></main>
+
+    <p class="dg-foot">Values are typical, rounded figures. Prices are rough US averages. A new puzzle unlocks every day at midnight.</p>
+  </div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>

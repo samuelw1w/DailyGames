@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Daily Games</title>
+  <meta name="description" content="Small daily puzzle games. A new set every midnight.">
+  <link rel="stylesheet" href="shared/theme.css">
+  <link rel="stylesheet" href="assets/hub.css">
+</head>
+<body>
+  <div class="dg-app">
+    <header class="dg-top">
+      <a class="dg-brand" href="./">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="1.5" y="1.5" width="37" height="37" rx="10" fill="#FFFDF7" stroke="#10142E" stroke-width="2.5"/><rect x="9" y="9" width="9" height="9" rx="2" fill="#FF5B3A" stroke="#10142E" stroke-width="2"/><rect x="22" y="9" width="9" height="9" rx="2" fill="#FFD23F" stroke="#10142E" stroke-width="2"/><rect x="9" y="22" width="9" height="9" rx="2" fill="#3EE0B0" stroke="#10142E" stroke-width="2"/><rect x="22" y="22" width="9" height="9" rx="2" fill="#FFFDF7" stroke="#10142E" stroke-width="2"/></svg>
+        <h1>Daily<span>Games</span></h1>
+      </a>
+      <span class="dg-stamp" id="today"></span>
+    </header>
+
+    <section class="hero">
+      <h2>Today's puzzles</h2>
+      <p>A few minutes a day. Same puzzles for everyone, new ones at midnight.</p>
+      <p class="progress" id="progress"></p>
+    </section>
+
+    <main class="games" id="games" aria-label="Games"></main>
+
+    <p class="dg-foot">Your streaks are saved in this browser.</p>
+  </div>
+  <script type="module" src="assets/hub.js"></script>
+</body>
+</html>

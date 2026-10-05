@@ -1,0 +1,80 @@
+/* Daily Games house style, shared by the hub and every game.
+   Look: a cobalt "lab board" with graph-paper grid, paper cards, thick ink outlines and hard offset shadows.
+   Games may override --accent; everything else should come from these tokens. */
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Gabarito:wght@400;500;600;700&family=Martian+Mono:wght@500;700&display=swap");
+
+:root {
+  --board: #2338c9; --board-deep: #18279a; --grid: rgba(255, 255, 255, 0.07);
+  --paper: #fffdf7; --paper-2: #f1eeff; --ink: #10142e; --muted: #5a6085;
+  --tomato: #ff5b3a; --mint: #3ee0b0; --mint-ink: #0e9f78; --sun: #ffd23f;
+  --accent: var(--tomato);
+  --on-board: #ffffff; --on-board-dim: rgba(255, 255, 255, 0.72);
+  --f-display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+  --f-body: "Gabarito", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "Martian Mono", ui-monospace, Menlo, monospace;
+  --f-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  --shadow: 4px 4px 0 var(--ink); --shadow-lg: 6px 6px 0 var(--ink); --r: 18px;
+  color-scheme: light;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--board); }
+body { min-height: 100vh; }
+body {
+  color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.45;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(255, 255, 255, 0.12), transparent 60%),
+    linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 28px 28px,
+    var(--board);
+}
+button { font: inherit; cursor: pointer; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; }
+
+.dg-app { max-width: 860px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 56px; display: flex; flex-direction: column; gap: 18px; }
+
+/* Header */
+.dg-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--on-board); }
+.dg-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.dg-brand h1, .dg-brand .name { font-family: var(--f-display); font-weight: 800; font-size: clamp(28px, 5vw, 38px); letter-spacing: -0.03em; margin: 0; line-height: 1; }
+.dg-brand h1 span, .dg-brand .name span { color: var(--sun); }
+.dg-brand svg { width: 40px; height: 40px; flex: none; }
+.dg-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dg-stamp { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--on-board-dim); }
+.dg-ghost { background: transparent; border: 2px solid rgba(255, 255, 255, 0.55); color: var(--on-board); border-radius: 999px; padding: 6px 14px; font-weight: 600; font-size: 14px; text-decoration: none; }
+.dg-ghost:hover { border-color: var(--on-board); background: rgba(255, 255, 255, 0.08); }
+
+/* Surfaces */
+.dg-card { background: var(--paper); border: 2.5px solid var(--ink); border-radius: var(--r); box-shadow: var(--shadow-lg); position: relative; }
+.dg-chip { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; background: var(--ink); color: var(--paper); padding: 5px 10px; border-radius: 999px; }
+
+/* Buttons */
+.dg-btn { font-family: var(--f-display); font-weight: 800; font-size: 17px; border: 2.5px solid var(--ink); border-radius: 14px; padding: 12px 18px; box-shadow: var(--shadow); background: var(--sun); color: var(--ink); text-decoration: none; text-align: center; transition: transform 0.1s, box-shadow 0.1s, opacity 0.2s; }
+.dg-btn.accent { background: var(--accent); color: var(--paper); }
+.dg-btn.plain { background: var(--paper); }
+.dg-btn:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); }
+.dg-btn:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+.dg-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Stats tiles */
+.dg-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+.dg-stat { flex: 1 1 120px; border: 2px solid var(--ink); border-radius: 12px; padding: 10px 12px; background: var(--paper-2); }
+.dg-stat b { display: block; font-family: var(--f-display); font-size: 26px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.dg-stat span { font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+/* Modal */
+.dg-overlay { position: fixed; inset: 0; background: rgba(16, 20, 46, 0.6); display: grid; place-items: center; padding: 16px; z-index: 50; }
+.dg-modal { max-width: 520px; width: 100%; padding: 24px 24px 22px; animation: dg-pop 0.4s cubic-bezier(0.3, 1.5, 0.5, 1) both; max-height: 90vh; overflow: auto; }
+.dg-modal h3 { font-family: var(--f-display); font-weight: 800; font-size: 28px; letter-spacing: -0.02em; margin: 0 0 12px; }
+
+.dg-foot { color: var(--on-board-dim); font-size: 13px; text-align: center; max-width: 62ch; margin: 4px auto 0; }
+.dg-confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
+
+@keyframes dg-pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes dg-enter { from { transform: translateY(14px); opacity: 0.001; } to { transform: none; opacity: 1; } }
+.dg-enter { animation: dg-enter 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
