@@ -20,7 +20,7 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const view = $("#view");
 const tracker = $("#tracker");
-$("#stamp").textContent = `Puzzle #${PUZZLE_NO} · ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+$("#stamp").textContent = `No. ${PUZZLE_NO}`;
 
 let S = null; // { mode, rounds, idx, results, over }
 let timer = null;

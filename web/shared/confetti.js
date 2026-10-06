@@ -1,5 +1,5 @@
 // Full-screen confetti burst on a shared canvas. No-op when the player prefers reduced motion.
-const COLORS = ["#FF5B3A", "#3EE0B0", "#FFD23F", "#FFFDF7", "#10142E"];
+const COLORS = ["#F4F4F5", "#A78BFA", "#F59E4C", "#6FDC8C", "#5BB8F5"];
 let canvas, ctx, parts = [], running = false;
 
 export function confetti(count = 120) {
@@ -38,10 +38,7 @@ function frame() {
     ctx.translate(p.x, p.y);
     ctx.rotate(p.r);
     ctx.fillStyle = p.c;
-    ctx.strokeStyle = "#10142E";
-    ctx.lineWidth = 1.2;
     ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-    ctx.strokeRect(-p.w / 2, -p.h / 2, p.w, p.h);
     ctx.restore();
   }
   if (parts.length) requestAnimationFrame(frame);

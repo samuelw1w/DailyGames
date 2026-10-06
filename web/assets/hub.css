@@ -1,21 +1,22 @@
 /* Hub page. Shared look lives in /shared/theme.css. */
-.hero { color: var(--on-board); display: flex; flex-direction: column; gap: 6px; padding-block: 8px 4px; }
-.hero h2 { font-family: var(--f-display); font-weight: 800; font-size: clamp(34px, 7vw, 60px); letter-spacing: -0.035em; line-height: 0.95; margin: 0; text-wrap: balance; }
-.hero p { margin: 0; color: var(--on-board-dim); font-size: 17px; max-width: 52ch; }
-.hero .progress { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--sun); }
+.today { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.today h1 { margin: 0; font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
+.today p { margin: 2px 0 0; color: var(--dim); }
+.streak { color: var(--muted); padding-top: 9px; white-space: nowrap; }
 
-.games { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 18px; }
-.game { display: flex; flex-direction: column; gap: 12px; padding: 20px; text-decoration: none; color: var(--ink); transition: transform 0.15s, box-shadow 0.15s; }
-a.game:hover { transform: translate(-2px, -2px); box-shadow: 8px 8px 0 var(--ink); }
-a.game:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--ink); }
-.game .tile { width: 64px; height: 64px; border-radius: 16px; border: 2.5px solid var(--ink); box-shadow: var(--shadow); background: var(--g-accent, var(--accent)); display: grid; place-items: center; font-family: var(--f-emoji); font-size: 34px; }
-.game h3 { font-family: var(--f-display); font-weight: 800; font-size: 28px; letter-spacing: -0.02em; margin: 0; line-height: 1; }
-.game p { margin: 0; color: var(--muted); }
-.game .foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.game .status { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-.game .status b { color: var(--ink); }
-.game .cta { font-size: 15px; padding: 8px 14px; }
-.game.done .cta { background: var(--mint); }
-.game.soon { background: transparent; border-style: dashed; border-color: rgba(255, 255, 255, 0.5); box-shadow: none; color: var(--on-board); }
-.game.soon p { color: var(--on-board-dim); }
-.game.soon .tile { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.5); box-shadow: none; }
+.progress { display: flex; flex-direction: column; gap: 12px; }
+.progress p { margin: 0; color: var(--muted); }
+
+.sections { display: flex; flex-direction: column; gap: 22px; margin-top: 6px; }
+.section { display: flex; flex-direction: column; gap: 12px; }
+.games { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+.game { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 10px; padding: 18px 16px; text-decoration: none; transition: background 0.15s, border-color 0.15s; }
+a.game:hover { background: var(--surface-2); border-color: var(--line-2); }
+.game .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); }
+.game b { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game .status { grid-column: 2; font-size: 15px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game.done .status { color: var(--c); }
+.game.soon { background: color-mix(in srgb, var(--surface) 60%, var(--bg)); }
+.game.soon .dot { opacity: 0.4; }
+.game.soon b, .game.soon .status { color: var(--dim); }

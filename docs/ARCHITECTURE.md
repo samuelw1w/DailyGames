@@ -21,7 +21,7 @@ Each game keeps its rules and data in `web/games/<game>/core/`. That folder has 
 - the browser imports it to build today's puzzle and score answers instantly, and
 - the API imports the **same file** (`api/src/games/<game>.js`) to rebuild the puzzle for a date and rescore what the player sent.
 
-The client never sends a score. It sends its answers, and the server works out the score, so a tampered client can't post 500/500.
+The client never sends a score. It sends its answers, and the server works out the score, so a tampered client can't post 500/500. For Orbit the "answers" are the ticks at which the player tapped: the physics runs in fixed ticks with no engine-dependent maths, so the server replays the taps and gets the exact same flight.
 
 ### Daily puzzles without a server
 `shared/random.js` turns a string like `"middleman:2026-10-05"` into a seeded random sequence. Every device generates the same puzzle for the same date without asking a server, and the game works offline.

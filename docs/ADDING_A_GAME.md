@@ -7,7 +7,7 @@ Each game is one folder plus a registry entry. The steps below use a game called
 ```
 web/games/oddone/
 ├── index.html     # copy Middleman's and change the title, logo and script
-├── style.css      # game-only styles; colors, fonts and buttons come from shared/theme.css
+├── style.css      # game-only styles, plus the game's own --accent color; the rest comes from shared/theme.css
 ├── main.js        # UI
 └── core/          # rules + data, with no DOM, storage or network code
     └── puzzle.js
@@ -23,17 +23,36 @@ import { submitPlay, getStats } from "../../shared/api.js";
 ```
 
 - Build the daily puzzle from `mulberry32(hash("oddone:" + day))`. Prefix the seed with the game ID so games don't share puzzles.
-- Save the result with `gameStore("oddone").saveDay(day, result, score)`. The `result` object must include `total` so the hub can show the score.
+- Save the result with `gameStore("oddone").saveDay(day, result, score)`. The `result` object must include `total` so the hub can show the score. If "412/500" isn't the right way to say it, also save a short `label` (Orbit saves "3 jumps") and the hub shows that instead.
 - Treat the API as optional: `submitPlay` and `getStats` resolve to `null` when it's unreachable.
 
 ## 2. Hub: `web/shared/registry.js`
 
 ```js
-{ id: "oddone", name: "Odd One Out", tagline: "…", icon: "🧩", accent: "#3EE0B0",
+{ id: "oddone", name: "Odd One Out", tagline: "…", category: "Logic", accent: "#5BB8F5",
   path: "games/oddone/", launchDay: "2026-11-01", maxScore: 100, status: "live" }
 ```
 
-Use `status: "soon"` to show a teaser card before launch.
+Use `status: "soon"` to show a dimmed teaser card before launch. `category` is the hub section (Word, Knowledge, Play or Logic).
+
+### Look and feel
+Every page shares one style: near-black page, quiet rounded cards, white type with grey secondary text. Each game has **its own accent color that no other game uses**. Set it in the registry (`accent`) and at the top of the game's `style.css`:
+
+```css
+:root { --accent: #5bb8f5; --tint: 5%; }   /* --tint washes the page background with the accent */
+```
+
+Orbit is the reference for how a game should look: the scene drawn straight on the page with a few thin lines, white for the thing you control, the accent for the thing you aim at, and nothing decorative. Pins, Spot and Skip follow it.
+
+Build the page from the shared pieces in `shared/theme.css`: `dg-head` (Hub / name / "No. 12" and a one-line subtitle), `dg-row` (a left/right line of facts), `dg-segs` (segmented progress bar), `dg-card`, `dg-btn`, `dg-stats`, `dg-links`, and for one-tap games `dg-zone` (the whole play area as one button), `dg-stage` (the canvas), `dg-tap` (the prompt card), `dg-summary` and `dg-verdict` (the result screen). `shared/ui.js` has the help dialog, copy button, countdown and rank line. Use the accent for the thing the player should look at, and keep everything else white or grey.
+
+### One-tap games
+Action games like Orbit follow these rules:
+
+- **The game moves, the player picks the moment.** The only input is a tap. The whole play area is the button, and Space does the same on a keyboard. No drag, swipe, hold, pinch or multi-touch.
+- **Fixed-timestep physics** in `core/`, using only `+ - * /` and `Math.sqrt`, so the same tap timing gives the same result on every device and the server can replay it. See `orbit/core/sim.js`.
+- **Generous timing.** Orbit's levels are only used if they can be won through launch windows of at least a fifth of a second. Spot only keeps a kick if it offers a scoring chance a quarter of a second long.
+- **Slow motion** as an optional assist. Results earned with it are marked (🐢) in stats and shares.
 
 ## 3. Backend (only if the game sends plays): `api/src/games/oddone.js`
 
@@ -50,6 +69,8 @@ export default {
   },
 };
 ```
+
+`answers` can be any JSON. For an action game, send the inputs (Orbit sends the tick of each tap) and replay them on the server.
 
 Then register it in `api/src/games/index.js`. No database changes are needed: `plays` and `picks` are shared by all games.
 

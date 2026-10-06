@@ -1,0 +1,2 @@
+/* Skip-only styles. Shared look (colors, fonts, buttons, cards, play area) lives in /shared/theme.css. */
+:root { --accent: #5bb8f5; --tint: 5%; --stage: 1.538; } /* a wide, low stretch of water */

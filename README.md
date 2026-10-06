@@ -1,4 +1,4 @@
-# Daily Games
+# Daily Hub
 
 A hub of small daily puzzle games. Everyone gets the same puzzles each day, and a new set unlocks at midnight in the player's own time zone.
 
@@ -7,6 +7,10 @@ A hub of small daily puzzle games. Everyone gets the same puzzles each day, and 
 | Game | Folder | What it is |
 | --- | --- | --- |
 | Middleman | [`web/games/middleman`](web/games/middleman) | Name the thing halfway between two others by weight, speed, size, age or price. |
+| Orbit | [`web/games/orbit`](web/games/orbit) | A ship circles a planet. Tap to let go and sling it from planet to planet; reach the goal in five jumps. |
+| Pins | [`web/games/pins`](web/games/pins) | Three frames of bowling. One tap sets where the ball starts, a second sets its hook. |
+| Spot | [`web/games/spot`](web/games/spot) | Five penalty kicks. Tap to shoot where the sweeping reticle is; the keeper repeats a routine you can read. |
+| Skip | [`web/games/skip`](web/games/skip) | Skip a stone. Tap each time it touches the water; the timing tightens with every skip. |
 
 ## How it's built
 
@@ -16,19 +20,30 @@ DailyGames/
 │   ├── index.html           # The hub: one card per game
 │   ├── assets/              # Hub-only CSS and JS
 │   ├── shared/              # Used by the hub and every game
-│   │   ├── theme.css        #   house style: colors, fonts, cards, buttons
+│   │   ├── theme.css        #   house style: dark page, quiet cards, one accent color per game
 │   │   ├── registry.js      #   the list of games shown on the hub
 │   │   ├── random.js        #   seeded randomness (same puzzle for everyone)
 │   │   ├── daily.js         #   date keys, puzzle numbers, countdown
 │   │   ├── storage.js       #   per-browser results and streaks
 │   │   ├── api.js           #   optional calls to the backend
+│   │   ├── ui.js            #   help dialog, copy button, countdown, "you beat X%"
 │   │   └── confetti.js
 │   └── games/
-│       └── middleman/
-│           ├── index.html, style.css, main.js   # UI
-│           └── core/                            # Rules and data, shared with the API
-│               ├── catalog.js                   #   every answer and its value
-│               └── puzzle.js                    #   daily puzzle, scoring, search
+│       ├── middleman/
+│       │   ├── index.html, style.css, main.js   # UI
+│       │   └── core/                            # Rules and data, shared with the API
+│       │       ├── catalog.js                   #   every answer and its value
+│       │       └── puzzle.js                    #   daily puzzle, scoring, search
+│       ├── orbit/
+│       │   ├── index.html, style.css, main.js   # UI (canvas)
+│       │   └── core/
+│       │       ├── sim.js                       #   physics and level builder
+│       │       ├── levels.js                    #   checked level seeds, one per day (generated)
+│       │       ├── solver.js                    #   finds routes; used to pick fair levels
+│       │       └── puzzle.js                    #   daily level, scoring, share text
+│       ├── pins/                                # same shape: UI + core/sim.js (ball and pins), core/puzzle.js (frames, scoring)
+│       ├── spot/                                # UI + core/sim.js (reticle, keeper, kicks)
+│       └── skip/                                # UI + core/sim.js (touches, timing windows)
 ├── api/                     # Backend (Cloudflare Worker)
 │   ├── src/
 │   │   ├── index.js         # Router
@@ -36,6 +51,7 @@ DailyGames/
 │   │   ├── games/           # One module per game: validates answers, computes the score
 │   │   └── lib/             # HTTP and date helpers
 │   └── migrations/          # D1 (SQLite) schema
+├── tools/                   # `npm run orbit:levels` rebuilds Orbit's level list
 ├── tests/                   # `npm test`: game rules + API against a real SQLite DB
 ├── docs/                    # Architecture, API reference, adding a new game
 └── wrangler.toml            # One deploy serves both web/ and the API
@@ -69,4 +85,4 @@ npm run deploy                          # prints your URL, e.g. https://daily-ga
 
 After that, `npm run deploy` publishes any change. To use your own domain, add it under the Worker's **Settings → Domains & Routes** in the Cloudflare dashboard.
 
-**Changing a game's catalog** (for example `web/games/middleman/core/catalog.js`) changes the puzzles for every date, including today. Deploy those edits right after midnight.
+**Changing a game's catalog** (for example `web/games/middleman/core/catalog.js`) changes the puzzles for every date, including today. Deploy those edits right after midnight. The same goes for Orbit's physics (`web/games/orbit/core/sim.js`): after any change there, run `npm run orbit:levels` to rebuild the list of fair levels.

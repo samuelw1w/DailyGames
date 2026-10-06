@@ -1,4 +1,4 @@
-// Thin client for the Daily Games API (api/ folder). Every call is optional:
+// Thin client for the Daily Hub API (api/ folder). Every call is optional:
 // if the API is unreachable (offline, static hosting, local file), functions resolve
 // to null and games carry on without the social features.
 

@@ -2,7 +2,7 @@
   "name": "daily-games",
   "private": true,
   "type": "module",
-  "description": "A hub of small daily puzzle games, with a Cloudflare Workers + D1 backend.",
+  "description": "Daily Hub: a hub of small daily puzzle games, with a Cloudflare Workers + D1 backend.",
   "engines": {
     "node": ">=22.5"
   },
@@ -11,6 +11,7 @@
     "db:migrate:local": "wrangler d1 migrations apply daily-games --local",
     "db:migrate": "wrangler d1 migrations apply daily-games --remote",
     "deploy": "wrangler deploy",
+    "orbit:levels": "node tools/orbit-levels.js",
     "test": "node --test --no-warnings \"tests/*.test.js\""
   },
   "devDependencies": {

@@ -1,4 +1,4 @@
-// Daily Games Worker. Serves the API under /api/*; everything else is the static site in /web
+// Daily Hub Worker. Serves the API under /api/*; everything else is the static site in /web
 // (Cloudflare serves those files directly, see wrangler.toml).
 import { HttpError, json, corsHeaders, withHeaders } from "./lib/http.js";
 import { GAMES } from "./games/index.js";

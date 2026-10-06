@@ -1,0 +1,2 @@
+/* Spot-only styles. Shared look (colors, fonts, buttons, cards, play area) lives in /shared/theme.css. */
+:root { --accent: #6fdc8c; --tint: 5%; --stage: 1.538; } /* a goal mouth is wide and low */

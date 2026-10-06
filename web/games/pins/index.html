@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Middleman · Daily Hub</title>
-  <meta name="theme-color" content="#16120e">
-  <meta name="description" content="A daily game: name the thing halfway between two others by weight, speed, size, age or price.">
+  <meta name="theme-color" content="#150f12">
+  <title>Pins · Daily Hub</title>
+  <meta name="description" content="A daily game: three frames of bowling with two taps per ball, one for position and one for hook.">
   <link rel="stylesheet" href="../../shared/theme.css">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -13,19 +13,17 @@
   <div class="dg-app">
     <header class="dg-head">
       <a href="../../">Hub</a>
-      <h1>Middleman</h1>
+      <h1>Pins</h1>
       <span class="no" id="stamp"></span>
-      <p class="sub">Name the thing halfway between two others</p>
+      <p class="sub" id="sub"></p>
     </header>
 
-    <nav class="tracker" id="tracker" aria-label="Rounds"></nav>
-    <main id="view"></main>
+    <main class="dg-view" id="view"></main>
 
     <nav class="dg-links">
       <button class="dg-link" id="howBtn" type="button">How to play</button>
+      <button class="dg-link" id="assistBtn" type="button" aria-pressed="false"></button>
     </nav>
-
-    <p class="dg-foot">Values are typical, rounded figures. Prices are rough US averages. A new puzzle unlocks every day at midnight.</p>
   </div>
   <script type="module" src="main.js"></script>
 </body>

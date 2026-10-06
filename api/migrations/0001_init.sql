@@ -1,4 +1,4 @@
--- Daily Games schema. Shared by every game; rows are keyed by (game, day).
+-- Daily Hub schema. Shared by every game; rows are keyed by (game, day).
 
 -- One row per finished daily play. A browser (client_id) can play each game once per day.
 CREATE TABLE IF NOT EXISTS plays (

@@ -1,0 +1,4 @@
+/* Orbit-only styles. Shared look (colors, fonts, buttons, cards, play area) lives in /shared/theme.css. */
+:root { --accent: #a78bfa; --tint: 5%; }
+
+.map { width: min(100%, 300px); }

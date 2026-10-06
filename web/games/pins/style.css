@@ -1,0 +1,9 @@
+/* Pins-only styles. Shared look (colors, fonts, buttons, cards, play area) lives in /shared/theme.css. */
+:root { --accent: #f27db0; --tint: 5%; --stage: 0.55; --chrome: 356px; } /* a lane is tall and narrow */
+
+/* Scorecard: one cell per frame, marks on top and the running score under them. */
+.frames { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.frames div { display: flex; flex-direction: column; align-items: center; gap: 2px; padding-top: 10px; border-top: 6px solid var(--surface-2); border-radius: 3px; font-variant-numeric: tabular-nums; transition: border-color 0.3s; }
+.frames div.now, .frames div.done { border-top-color: var(--accent); }
+.frames b { font-size: 18px; font-weight: 600; letter-spacing: 0.12em; margin-right: -0.12em; min-height: 1.45em; }
+.frames span { color: var(--muted); font-size: 14px; min-height: 1.45em; }
