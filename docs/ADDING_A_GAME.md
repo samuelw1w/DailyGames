@@ -33,7 +33,15 @@ import { submitPlay, getStats } from "../../shared/api.js";
   path: "games/oddone/", launchDay: "2026-11-01", maxScore: 100, status: "live" }
 ```
 
-Use `status: "soon"` to show a dimmed teaser card before launch. `category` is the hub section (Word, Knowledge, Play, Tables or Logic); add a new section by adding its name to `CATEGORIES` in the same file.
+`category` is the act the game belongs to: "Play" or "Know".
+
+### Joining the Series
+The day is ten games worth up to 100 points each. To put a game in the Series:
+
+- add its ID to an act in `web/shared/series.js` (that file sets the playing order), and
+- save a `points` number from 0 to 100 in the game's daily result. Older games are converted in `series.js` instead (`CONVERT`).
+
+Use `resultScreen()` from `shared/ui.js` for the result page: it shows the points, the stats, and the "Next: …" button that carries the player on to the following game. Games with their own result page add `seriesButton(day)` and `pointsLine(gameId, result)` themselves.
 
 ### Look and feel
 Every page shares one style: near-black page, quiet rounded cards, white type with grey secondary text. Each game has **its own accent color that no other game uses**. Set it in the registry (`accent`) and at the top of the game's `style.css`:
@@ -42,7 +50,7 @@ Every page shares one style: near-black page, quiet rounded cards, white type wi
 :root { --accent: #5bb8f5; --tint: 5%; }   /* --tint washes the page background with the accent */
 ```
 
-Orbit is the reference for how a game should look: the scene drawn straight on the page with a few thin lines, white for the thing you control, the accent for the thing you aim at, and nothing decorative. Pins, Spot and Skip follow it.
+Orbit is the reference for how a game should look: the scene drawn straight on the page with a few thin lines, white for the thing you control, the accent for the thing you aim at, and nothing decorative. Pins, Skip and Hole follow it.
 
 Build the page from the shared pieces in `shared/theme.css`: `dg-head` (Hub / name / "No. 12" and a one-line subtitle), `dg-row` (a left/right line of facts), `dg-segs` (segmented progress bar), `dg-card`, `dg-btn`, `dg-stats`, `dg-links`, and for one-tap games `dg-zone` (the whole play area as one button), `dg-stage` (the canvas), `dg-tap` (the prompt card), `dg-summary` and `dg-verdict` (the result screen). `shared/ui.js` has the help dialog, copy button, countdown and rank line. Use the accent for the thing the player should look at, and keep everything else white or grey.
 
@@ -51,7 +59,7 @@ Action games like Orbit follow these rules:
 
 - **The game moves, the player picks the moment.** The only input is a tap. The whole play area is the button, and Space does the same on a keyboard. No drag, swipe, hold, pinch or multi-touch.
 - **Fixed-timestep physics** in `core/`, using only `+ - * /` and `Math.sqrt`, so the same tap timing gives the same result on every device and the server can replay it. See `orbit/core/sim.js`.
-- **Generous timing.** Orbit's levels are only used if they can be won through launch windows of at least a fifth of a second. Spot only keeps a kick if it offers a scoring chance a quarter of a second long.
+- **Generous timing.** Orbit's levels are only used if they can be won through launch windows of at least a fifth of a second.
 - **Randomness is seeded, never `Math.random()`.** Pins' release slip and Skip's uneven hops come from the day's seed, so they feel random to the player but the server can still replay them.
 - **Slow motion** as an optional assist. Results earned with it are marked (🐢) in stats and shares.
 

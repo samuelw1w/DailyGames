@@ -1,0 +1,2 @@
+/* Year-only styles. Shared look, including the number-game layout, lives in /shared/theme.css. */
+:root { --accent: #b7e05a; --tint: 5%; }

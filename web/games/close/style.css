@@ -1,0 +1,2 @@
+/* Close-only styles. Shared look, including the number-game layout, lives in /shared/theme.css. */
+:root { --accent: #d46be8; --tint: 5%; }

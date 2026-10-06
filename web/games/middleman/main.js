@@ -3,10 +3,11 @@ import {
   GAME_ID, ROUNDS_PER_DAY, SCALES, fmt, posOf, midValue, grade, SQUARES,
   dailyRounds, practiceRounds, scoreAnswer, closest, search,
 } from "./core/puzzle.js";
-import { dayKey, puzzleNumber } from "../../shared/daily.js";
+import { puzzleNumber } from "../../shared/daily.js";
 import { gameStore, clientId } from "../../shared/storage.js";
+import { activeDay } from "../../shared/account.js";
 import { submitPlay, getStats } from "../../shared/api.js";
-import { modal, wireCopy, startCountdown, showRank } from "../../shared/ui.js";
+import { modal, wireShare, startCountdown, showRank, seriesButton, pointsLine, lockScreen } from "../../shared/ui.js";
 import { confetti } from "../../shared/confetti.js";
 import { GAMES } from "../../shared/registry.js";
 
@@ -22,7 +23,7 @@ const ICON_PATHS = {
 };
 const icon = (scale) => `<svg class="mm-icon" viewBox="0 0 24 24" aria-hidden="true">${ICON_PATHS[scale]}</svg>`;
 const ROUND_SECS = 45;
-const TODAY = dayKey();
+const TODAY = activeDay(); // today, or an earlier day a Plus member has opened
 const PUZZLE_NO = puzzleNumber(META.launchDay, TODAY);
 const store = gameStore(GAME_ID);
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -313,6 +314,7 @@ function showSummary(mode, rows, total, sent = null) {
     <div class="dg-verdict">
       <span class="big" id="tot">0</span><span>of 500</span>
       <h2>${title}</h2>
+      ${daily ? pointsLine(GAME_ID, { total }) : ""}
       ${daily ? "" : "<p>Practice games don't count toward your streak.</p>"}
     </div>
     <p class="dg-rank" id="rank" hidden></p>
@@ -326,14 +328,15 @@ function showSummary(mode, rows, total, sent = null) {
       <div class="dg-stat"><b>${st.best || total}</b><span>Best score</span></div>
       <div class="dg-stat"><b id="cd">--:--:--</b><span>Next puzzle</span></div></div>` : ""}
     <div class="dg-actions">
-      <button class="dg-btn" id="copyBtn" type="button">Copy result</button>
+      ${daily ? seriesButton(TODAY) : ""}
+      <button class="dg-btn plain" id="copyBtn" type="button">Share</button>
       <button class="dg-btn plain" id="practiceBtn" type="button">${daily ? "Play a practice round" : "Another practice round"}</button>
       ${!daily ? (store.getDay(TODAY) ? `<button class="dg-btn plain" id="backBtn" type="button">Back to today's result</button>` : `<button class="dg-btn plain" id="dailyBtn" type="button">Play today's puzzle</button>`) : ""}
     </div>
   </section>`;
 
   countUp($("#tot"), total, reduce ? 0 : 150, reduce ? 0 : 1100);
-  wireCopy($("#copyBtn"), shareText);
+  wireShare($("#copyBtn"), shareText);
   $("#practiceBtn").addEventListener("click", () => { startGame("practice"); window.scrollTo({ top: 0 }); });
   $("#backBtn")?.addEventListener("click", () => { const d = store.getDay(TODAY); showSummary("daily", d.rows, d.total); });
   $("#dailyBtn")?.addEventListener("click", () => startGame("daily"));
@@ -358,14 +361,17 @@ function howTo(onClose) {
 $("#howBtn").addEventListener("click", () => howTo());
 
 /* ---------------- Boot ---------------- */
-const saved = store.getDay(TODAY);
-if (saved?.rows) showSummary("daily", saved.rows, saved.total);
-else {
-  startGame("daily");
-  if (!store.flag("seenHelp")) {
-    // First visit: explain the rules before the clock starts.
-    store.setFlag("seenHelp");
-    stopTimer();
-    howTo(() => { startTimer(); $("#guess")?.focus(); });
+// A game the player hasn't unlocked shows how to open it instead.
+if (!lockScreen(GAME_ID, view)) {
+  const saved = store.getDay(TODAY);
+  if (saved?.rows) showSummary("daily", saved.rows, saved.total);
+  else {
+    startGame("daily");
+    if (!store.flag("seenHelp")) {
+      // First visit: explain the rules before the clock starts.
+      store.setFlag("seenHelp");
+      stopTimer();
+      howTo(() => { startTimer(); $("#guess")?.focus(); });
+    }
   }
 }

@@ -1,0 +1,57 @@
+/* Friends page. Shared look lives in /shared/theme.css. */
+
+/* Daily / All time switch */
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 14px; }
+.tabs button { padding: 9px 0; border: 0; border-radius: 10px; background: none; color: var(--muted); font-weight: 600; font-size: 15px; transition: background 0.15s, color 0.15s; }
+.tabs button[aria-selected="true"] { background: var(--surface-2); color: var(--text); }
+
+/* Step back and forward through the days */
+.days { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 4px; border: 1px solid var(--line); border-radius: 14px; text-align: center; }
+.days b { font-weight: 600; font-size: 15px; }
+.days button { height: 36px; border: 0; border-radius: 10px; background: none; color: var(--text); font-size: 20px; line-height: 1; }
+.days button:hover:not(:disabled) { background: var(--surface-2); }
+.days button:disabled { color: var(--dim); cursor: default; }
+
+/* The day's table */
+.board { display: flex; flex-direction: column; gap: 8px; }
+.who { display: grid; grid-template-columns: 22px 34px 1fr auto; align-items: center; gap: 2px 12px; width: 100%; padding: 12px 16px; text-align: left; transition: border-color 0.15s, background 0.15s; }
+button.who:hover { background: var(--surface-2); }
+.who[aria-pressed="true"] { border-color: var(--text); }
+.who.you { border-color: var(--line-2); }
+.who .rank { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; grid-row: span 2; }
+.who .face { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line-2); display: grid; place-items: center; font-weight: 600; font-size: 14px; grid-row: span 2; }
+.who.you .face { background: var(--text); color: var(--bg); border-color: transparent; }
+.who .name { font-weight: 600; }
+.who .total { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; grid-row: span 2; }
+.who .how { grid-column: 3; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.who.out .total, .who.out .name { color: var(--dim); }
+
+/* You against one friend */
+.versus { display: flex; flex-direction: column; gap: 14px; padding: 18px; }
+.heads { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 10px; }
+.heads div { display: flex; flex-direction: column; gap: 2px; }
+.heads div:last-child { text-align: right; }
+.heads span { color: var(--muted); font-size: 14px; }
+.heads b { font-size: 34px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; color: var(--muted); }
+.heads b.ahead { color: var(--text); }
+.heads i { font-style: normal; color: var(--dim); padding-bottom: 6px; }
+.lines { display: flex; flex-direction: column; }
+.line { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; font-variant-numeric: tabular-nums; }
+.line.act { border-top-color: var(--line-2); font-weight: 600; }
+.line b { font-weight: 400; color: var(--muted); }
+.line b.ahead { color: var(--text); font-weight: 600; }
+.line b:last-child { text-align: right; }
+.line .what { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--muted); }
+.line .what i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.line.act .what { color: var(--text); }
+
+/* The last seven days, head to head */
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.week button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 6px; border: 0; border-top: 4px solid var(--surface-2); border-radius: 3px; background: none; font-variant-numeric: tabular-nums; }
+.week button.won { border-top-color: var(--good); }
+.week button.lost { border-top-color: var(--bad); }
+.week button.shown span { color: var(--text); }
+.week span { color: var(--muted); font-size: 12px; }
+.week b { font-size: 13px; font-weight: 600; }
+.week em { font-style: normal; font-size: 12px; color: var(--muted); }
+.tally { margin: 0; text-align: center; color: var(--muted); font-size: 14px; }

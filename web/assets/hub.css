@@ -2,21 +2,66 @@
 .today { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .today h1 { margin: 0; font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
 .today p { margin: 2px 0 0; color: var(--dim); }
-.streak { color: var(--muted); padding-top: 9px; white-space: nowrap; }
+.today .dg-ghost { margin-top: 6px; }
+.dg-ghost.plus { border-color: var(--text); }
+.dg-ghost.plus.on { border-color: var(--line-2); color: var(--muted); }
 
-.progress { display: flex; flex-direction: column; gap: 12px; }
-.progress p { margin: 0; color: var(--muted); }
+/* Points to spend, on every tab */
+.bank { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: -6px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bank b { color: var(--text); font-weight: 600; }
+.bank .dg-link { padding: 0; font-size: inherit; text-decoration: underline; text-underline-offset: 3px; }
 
-.sections { display: flex; flex-direction: column; gap: 22px; margin-top: 6px; }
+/* Earlier days (Plus) */
+.days { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; padding: 4px; border: 1px solid var(--line); border-radius: 14px; text-align: center; }
+.days b { font-weight: 600; font-size: 15px; }
+.days button { height: 36px; border: 0; border-radius: 10px; background: none; color: var(--text); font-size: 20px; line-height: 1; }
+.days button:hover:not(:disabled) { background: var(--surface-2); }
+.days button:disabled { color: var(--dim); cursor: default; }
+
+/* The Series / Episodes switch */
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 14px; }
+.tabs button { padding: 9px 0; border: 0; border-radius: 10px; background: none; color: var(--muted); font-weight: 600; font-size: 15px; transition: background 0.15s, color 0.15s; }
+.tabs button[aria-selected="true"] { background: var(--surface-2); color: var(--text); }
+#series, #episodes { display: flex; flex-direction: column; gap: 18px; }
+
+/* The day's score */
+.score { display: flex; flex-direction: column; align-items: center; gap: 2px; padding-block: 14px 4px; text-align: center; }
+.score b { font-size: 76px; font-weight: 600; letter-spacing: -0.045em; line-height: 1; font-variant-numeric: tabular-nums; }
+.score b.dim { color: var(--dim); }
+.score span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.score .how { margin-top: 6px; color: var(--muted); }
+.score .how b { font-size: inherit; font-weight: 600; letter-spacing: 0; color: var(--text); }
+
+/* The three steps of the day */
+.steps { display: flex; flex-direction: column; gap: 10px; counter-reset: step; }
+.step { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 14px; padding: 16px 18px; }
+.step::before { counter-increment: step; content: counter(step); width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line-2); display: grid; place-items: center; font-size: 13px; font-weight: 600; color: var(--muted); grid-row: span 2; }
+.step b { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.step .pts { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.step .pts b { font-size: 18px; color: var(--text); }
+.step .sub { grid-column: 2; color: var(--muted); font-size: 14px; }
+.step .dots { display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
+.step .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--surface-2); }
+.step .dots i.on { background: var(--c); }
+.step .dots i.locked { background: none; border: 1px dashed var(--dim); }
+.step.now { border-color: var(--line-2); }
+.step.now::before { border-color: var(--text); color: var(--text); }
+.step.done::before { content: "✓"; background: var(--surface-2); border-color: transparent; color: var(--text); }
+.step.later { background: color-mix(in srgb, var(--surface) 55%, var(--bg)); }
+.step.later b, .step.later .sub { color: var(--dim); }
+
+.choice { display: flex; flex-direction: column; gap: 10px; }
+.note { margin: -6px 0 0; text-align: center; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+
+/* Episodes: every game on its own */
 .section { display: flex; flex-direction: column; gap: 12px; }
 .games { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-
 .game { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 10px; padding: 18px 16px; text-decoration: none; transition: background 0.15s, border-color 0.15s; }
 a.game:hover { background: var(--surface-2); border-color: var(--line-2); }
 .game .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); }
 .game b { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.game .status { grid-column: 2; font-size: 15px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game .status { grid-column: 2; font-size: 15px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .game.done .status { color: var(--c); }
-.game.soon { background: color-mix(in srgb, var(--surface) 60%, var(--bg)); }
-.game.soon .dot { opacity: 0.4; }
-.game.soon b, .game.soon .status { color: var(--dim); }
+.game.locked { background: color-mix(in srgb, var(--surface) 55%, var(--bg)); border-style: dashed; }
+.game.locked .dot { background: none; border: 1px dashed var(--c); }
+.game.locked b { color: var(--muted); }

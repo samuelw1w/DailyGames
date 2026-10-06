@@ -1,0 +1,2 @@
+/* Stop-only styles. Shared look (colors, fonts, buttons, cards, play area) lives in /shared/theme.css. */
+:root { --accent: #f47a6b; --tint: 5%; --stage: 1; --chrome: 330px; } /* one round dial */

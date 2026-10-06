@@ -1,0 +1,10 @@
+/* Plus page. Shared look lives in /shared/theme.css. */
+.price { display: flex; flex-direction: column; align-items: center; gap: 2px; padding-block: 14px 4px; text-align: center; }
+.price b { font-size: 56px; font-weight: 600; letter-spacing: -0.04em; line-height: 1; }
+.price span { color: var(--muted); }
+.perks { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.perks li { display: grid; grid-template-columns: 26px 1fr; gap: 2px 14px; padding: 14px 0; border-top: 1px solid var(--line); }
+.perks li:first-child { border-top: 0; }
+.perks li::before { content: "✓"; grid-row: span 2; width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); display: grid; place-items: center; font-size: 13px; }
+.perks b { font-weight: 600; }
+.perks span { grid-column: 2; color: var(--muted); font-size: 14px; }

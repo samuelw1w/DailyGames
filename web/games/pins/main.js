@@ -4,15 +4,16 @@ import {
   WORLD, LANE, TICKS_PER_SEC, BALL_R, PIN_R, SPOTS,
   dailyLane, ballLane, posAt, hookStart, aimPoint, createShot, stepShot, downed,
 } from "./core/sim.js";
-import { dayKey, puzzleNumber } from "../../shared/daily.js";
+import { puzzleNumber } from "../../shared/daily.js";
 import { gameStore, clientId } from "../../shared/storage.js";
+import { activeDay } from "../../shared/account.js";
 import { submitPlay } from "../../shared/api.js";
 import { confetti } from "../../shared/confetti.js";
-import { modal, wireCopy, startCountdown, showRank } from "../../shared/ui.js";
+import { modal, wireShare, startCountdown, showRank, seriesButton, pointsLine, lockScreen } from "../../shared/ui.js";
 import { GAMES } from "../../shared/registry.js";
 
 const META = GAMES.find((g) => g.id === GAME_ID);
-const TODAY = dayKey();
+const TODAY = activeDay(); // today, or an earlier day a Plus member has opened
 const PUZZLE_NO = puzzleNumber(META.launchDay, TODAY);
 const store = gameStore(GAME_ID);
 
@@ -256,6 +257,7 @@ function showSummary(mode, result, sent = null) {
     <div class="dg-verdict">
       <span class="big">${total}</span><span>of ${MAX_SCORE}</span>
       <h2>${title}</h2>
+      ${daily ? pointsLine(GAME_ID, result) : ""}
       ${result.assist ? `<p>${ASSIST_MARK} Played in slow motion.</p>` : ""}
     </div>
     <div class="frames">${framesHtml(rolls)}</div>
@@ -266,13 +268,14 @@ function showSummary(mode, result, sent = null) {
       <div class="dg-stat"><b>${best ? `${best.total}${best.assist ? ` ${ASSIST_MARK}` : ""}` : "–"}</b><span>Best score</span></div>
       <div class="dg-stat"><b id="cd">--:--:--</b><span>Next puzzle</span></div></div>` : ""}
     <div class="dg-actions">
-      <button class="dg-btn" id="copyBtn" type="button">Copy result</button>
+      ${daily ? seriesButton(TODAY) : ""}
+      <button class="dg-btn plain" id="copyBtn" type="button">Share</button>
       <button class="dg-btn plain" id="practiceBtn" type="button">${daily ? "Bowl a practice game" : "Another practice game"}</button>
       ${!daily ? (store.getDay(TODAY) ? `<button class="dg-btn plain" id="backBtn" type="button">Back to today's result</button>` : `<button class="dg-btn plain" id="dailyBtn" type="button">Play today's game</button>`) : ""}
     </div>
   </section>`;
 
-  wireCopy($("#copyBtn"), share);
+  wireShare($("#copyBtn"), share);
   $("#practiceBtn").addEventListener("click", () => { startGame("practice"); window.scrollTo({ top: 0 }); });
   $("#backBtn")?.addEventListener("click", showSaved);
   $("#dailyBtn")?.addEventListener("click", () => startGame("daily"));
@@ -314,11 +317,14 @@ function howTo() {
 $("#howBtn").addEventListener("click", howTo);
 
 /* ---------------- Boot ---------------- */
-if (store.getDay(TODAY)?.balls) showSaved();
-else {
-  startGame("daily");
-  if (!store.flag("seenHelp")) {
-    store.setFlag("seenHelp");
-    howTo();
+// A game the player hasn't unlocked shows how to open it instead.
+if (!lockScreen(GAME_ID, view)) {
+  if (store.getDay(TODAY)?.balls) showSaved();
+  else {
+    startGame("daily");
+    if (!store.flag("seenHelp")) {
+      store.setFlag("seenHelp");
+      howTo();
+    }
   }
 }

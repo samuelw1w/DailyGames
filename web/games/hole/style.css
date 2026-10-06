@@ -1,0 +1,15 @@
+/* Hole-only styles. Shared look (colors, fonts, buttons, cards, play area) lives in /shared/theme.css. */
+:root { --accent: #6fdc8c; --tint: 5%; --stage: 1.538; } /* a golf hole is long and low */
+
+/* Power meter: fills and empties until the second tap */
+.meter { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--accent); }
+
+/* Weekly scorecard: Monday to Sunday */
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.week div { display: flex; flex-direction: column; align-items: center; gap: 2px; padding-top: 10px; border-top: 6px solid var(--surface-2); border-radius: 3px; font-variant-numeric: tabular-nums; }
+.week div.played { border-top-color: var(--accent); }
+.week div.today { border-top-color: var(--text); }
+.week span { color: var(--muted); font-size: 13px; }
+.week b { font-size: 16px; font-weight: 600; min-height: 1.45em; }
+.weekly { margin: -6px 0 0; text-align: center; color: var(--muted); }

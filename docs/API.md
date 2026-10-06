@@ -6,7 +6,7 @@ Base path: `/api`. All bodies are JSON. Errors look like `{ "error": "Human-read
 `200 { "ok": true }`
 
 ### `GET /api/games`
-Games the API knows about. `200 { "games": ["middleman", "orbit", "pegs", "pins", "skip", "spot", "stakes"] }`
+Games the API knows about. `200 { "games": ["close", "hole", "house", "jot", "link", "middleman", "orbit", "pins", "skip", "stop", "year"] }`
 
 ### `POST /api/games/:game/plays`
 Record a finished daily game. Call this once, when the player finishes.
@@ -21,10 +21,14 @@ Record a finished daily game. Call this once, when the player finishes.
 | `clientId` | 8–64 chars of `A-Z a-z 0-9 -`. From `shared/storage.js → clientId()`. |
 | `answers` | Game-specific. Middleman: one item ID per round, `null` if time ran out. Orbit: `{ "taps": [190, 501, 885], "assist": false }`, the physics tick of each launch (at most 5, increasing) and whether slow motion was used. The server replays the taps to get the result. |
 | | Pins: `{ "balls": [[43, 37], [36, 55], …], "assist": false }`, for each ball the tick of the position tap and of the hook tap. |
-| | Spot: `{ "ticks": [129, 45, 100, 74, 61], "assist": false }`, the tick each of the five kicks was taken on. |
 | | Skip: `{ "throws": [[47], [50, 103, 167], []], "assist": false }`, for each of the three stones the tick of every tap after the throw. |
-| | Pegs: `{ "drops": [39, 2, 24], "assist": false }`, the launcher tick each ball was dropped on. |
-| | Stakes: `{ "plays": [{ "bet": 25, "pick": "red" }, { "bet": 19, "moves": "HS" }, { "bet": 24, "pick": "banker" }, { "bet": 18, "play": true }, { "bet": 9, "pick": "pass" }] }`, one bet and choice per table played (fewer than five only if the bankroll hit zero). |
+| | Hole: `{ "taps": [[68, 32], [40, 35], [54, 28]], "assist": false }`, for each swing or putt the tick of the aim tap and of the power tap. |
+| | Stop: `{ "ticks": [48, 26, 8, 47, 21], "assist": false }`, the tick each round's needle was stopped on. |
+| | Year: `{ "guesses": [1950, 1980, 1971] }`, up to three years in the order guessed. |
+| | Close: `{ "guesses": [5, 1000, 30] }`, up to three estimates in the unit the question asked for. |
+| | Jot: `{ "guesses": ["crane", "light", "until"] }`, up to eight five-letter guesses. |
+| | Link: `{ "answers": [{ "guesses": ["rise", "fall"], "hint": true }, …] }`, one entry per pair. |
+| | Risk (id `house`): `{ "start": 638, "plays": [{ "table": "roulette", "pick": "red" }, { "table": "blackjack", "moves": "HS" }, { "table": "craps", "pick": "pass" }] }`. One to five hands in the order played; the player may stop after any of them. Each names its table and the side taken: roulette `red`, `black`, `odd`, `even`, `low`, `high`; sic bo `small`, `big`; baccarat `player`, `banker`; craps `pass`, `dont`; blackjack sends `moves` (H and S) instead. `start` (1 to 1000) is the day's Series points; the server can check every hand but not that number. |
 
 Responses:
 - `201 { "score": 412, "rank": { "players": 120, "betterThan": 64 } }`
@@ -33,7 +37,7 @@ Responses:
 
 `betterThan` is the percentage of *other* players today with a lower score.
 
-Orbit's score is `6 − jumps used` for reaching the goal (so 5 is a one-jump win) and `0` for running out of jumps. Pins is the bowling score out of 90, Spot the goals out of 5, Skip the best stone's skips out of 30. Pegs is yellow pegs cleared (out of 10) plus 2 for each ball left over when all are cleared. Stakes is the final bankroll, starting from 100; its score chart tops out at 1000 but bigger wins are possible.
+Orbit's score is `6 − jumps used` for reaching the goal (so 5 is a one-jump win) and `0` for running out of jumps. Pins is the bowling score out of 90 and Skip the best stone's skips out of 30. Stop, Year, Close, Jot and Link score 0 to 100 directly. Hole scores 4 for par, one more for each stroke under and one fewer for each over (0 to 8). Risk is `start` times the multiplier (1.0× plus or minus 0.2× per hand), so 0 to 2,000.
 
 ### `GET /api/games/:game/days/:day/stats[?score=N]`
 Crowd stats for a day. Future dates return `400`, so nobody can preview tomorrow's answers.

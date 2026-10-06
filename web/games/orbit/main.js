@@ -1,15 +1,16 @@
 // Orbit UI: drawing, the tap, the game loop. Physics and rules live in core/.
 import { GAME_ID, dailyLevel, practiceLevel, scoreRun, resultLabel, shareText, ASSIST_MARK } from "./core/puzzle.js";
 import { WORLD, MAX_JUMPS, TICKS_PER_SEC, createRun, step, replay } from "./core/sim.js";
-import { dayKey, puzzleNumber } from "../../shared/daily.js";
+import { puzzleNumber } from "../../shared/daily.js";
 import { gameStore, clientId } from "../../shared/storage.js";
+import { activeDay } from "../../shared/account.js";
 import { submitPlay } from "../../shared/api.js";
 import { confetti } from "../../shared/confetti.js";
-import { modal, wireCopy, startCountdown, showRank } from "../../shared/ui.js";
+import { modal, wireShare, startCountdown, showRank, seriesButton, pointsLine, lockScreen } from "../../shared/ui.js";
 import { GAMES } from "../../shared/registry.js";
 
 const META = GAMES.find((g) => g.id === GAME_ID);
-const TODAY = dayKey();
+const TODAY = activeDay(); // today, or an earlier day a Plus member has opened
 const PUZZLE_NO = puzzleNumber(META.launchDay, TODAY);
 const store = gameStore(GAME_ID);
 
@@ -306,6 +307,7 @@ function showSummary(mode, level, result, paths, sent = null) {
     <div class="dg-verdict">
       ${won ? `<span class="big">${jumps}</span><span>${jumps === 1 ? "jump" : "jumps"} of ${MAX_JUMPS}</span>` : `<span class="big lost">Lost in space</span>`}
       <h2>${title}</h2>
+      ${daily ? pointsLine(GAME_ID, result) : ""}
       ${result.assist ? `<p>${ASSIST_MARK} Played in slow motion.</p>` : ""}
     </div>
     <canvas class="dg-stage map" id="map" role="img" aria-label="Your flight path"></canvas>
@@ -317,7 +319,8 @@ function showSummary(mode, level, result, paths, sent = null) {
       <div class="dg-stat"><b>${best ? `${best.jumps}${best.assist ? ` ${ASSIST_MARK}` : ""}` : "–"}</b><span>Fewest jumps</span></div>
       <div class="dg-stat"><b id="cd">--:--:--</b><span>Next puzzle</span></div></div>` : ""}
     <div class="dg-actions">
-      <button class="dg-btn" id="copyBtn" type="button">Copy result</button>
+      ${daily ? seriesButton(TODAY) : ""}
+      <button class="dg-btn plain" id="copyBtn" type="button">Share</button>
       <button class="dg-btn plain" id="practiceBtn" type="button">${daily ? "Play a practice level" : "Another practice level"}</button>
       ${!daily ? (store.getDay(TODAY) ? `<button class="dg-btn plain" id="backBtn" type="button">Back to today's result</button>` : `<button class="dg-btn plain" id="dailyBtn" type="button">Play today's puzzle</button>`) : ""}
     </div>
@@ -331,7 +334,7 @@ function showSummary(mode, level, result, paths, sent = null) {
   document.fonts?.ready.then(paint);
   addEventListener("resize", paint);
 
-  wireCopy($("#copyBtn"), share);
+  wireShare($("#copyBtn"), share);
   $("#practiceBtn").addEventListener("click", () => { startGame("practice"); window.scrollTo({ top: 0 }); });
   $("#backBtn")?.addEventListener("click", showSaved);
   $("#dailyBtn")?.addEventListener("click", () => startGame("daily"));
@@ -376,11 +379,14 @@ function howTo() {
 $("#howBtn").addEventListener("click", howTo);
 
 /* ---------------- Boot ---------------- */
-if (store.getDay(TODAY)?.taps) showSaved();
-else {
-  startGame("daily");
-  if (!store.flag("seenHelp")) {
-    store.setFlag("seenHelp");
-    howTo();
+// A game the player hasn't unlocked shows how to open it instead.
+if (!lockScreen(GAME_ID, view)) {
+  if (store.getDay(TODAY)?.taps) showSaved();
+  else {
+    startGame("daily");
+    if (!store.flag("seenHelp")) {
+      store.setFlag("seenHelp");
+      howTo();
+    }
   }
 }

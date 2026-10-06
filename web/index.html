@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b0b0c">
   <title>Daily Hub</title>
-  <meta name="description" content="Small daily puzzle games. A new set every midnight.">
+  <meta name="description" content="A few small games a day, played as one series. Add up your points, then lock them in or risk them at the tables.">
   <link rel="stylesheet" href="shared/theme.css">
   <link rel="stylesheet" href="assets/hub.css">
 </head>
@@ -13,20 +13,33 @@
   <div class="dg-app">
     <header class="today">
       <div>
-        <h1>Today</h1>
+        <h1 id="title">Today</h1>
         <p id="today"></p>
       </div>
-      <span class="streak" id="streak"></span>
+      <a class="dg-ghost plus" id="plusBtn" href="plus/">Subscribe</a>
     </header>
 
-    <div class="progress">
-      <div class="dg-segs" id="segs" aria-hidden="true"></div>
-      <p id="progress"></p>
+    <div class="bank">
+      <span><b id="balance">0</b> points to spend</span>
+      <a class="dg-link" href="friends/">Friends</a>
     </div>
 
-    <main class="sections" id="games" aria-label="Games"></main>
+    <nav class="tabs" role="tablist" aria-label="Ways to play">
+      <button type="button" role="tab" id="tab-series" aria-controls="series" aria-selected="true">The Series</button>
+      <button type="button" role="tab" id="tab-episodes" aria-controls="episodes" aria-selected="false">Episodes</button>
+    </nav>
 
-    <p class="dg-foot">Same puzzles for everyone, new ones at midnight. Your streaks are saved in this browser.</p>
+    <nav class="days" id="days" aria-label="Day" hidden>
+      <button type="button" id="prev" aria-label="Earlier day">‹</button>
+      <b id="dayLabel"></b>
+      <button type="button" id="next" aria-label="Later day">›</button>
+    </nav>
+
+    <main id="series" role="tabpanel" aria-labelledby="tab-series"></main>
+    <main id="episodes" role="tabpanel" aria-labelledby="tab-episodes" hidden></main>
+
+    <div id="ad"></div>
+    <p class="dg-foot">Same games for everyone, new ones at midnight. Your scores are saved in this browser.</p>
   </div>
   <script type="module" src="assets/hub.js"></script>
 </body>

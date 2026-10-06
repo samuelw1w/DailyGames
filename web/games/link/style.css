@@ -1,0 +1,24 @@
+/* Link-only styles. Shared look (colors, fonts, buttons, cards) lives in /shared/theme.css. */
+:root { --accent: #f5d547; --tint: 4%; }
+
+.link { display: flex; flex-direction: column; gap: 18px; }
+/* Two words flank a blank pill */
+.trio { display: flex; align-items: center; justify-content: center; gap: 10px; padding-block: 22px; font-size: 22px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.trio .gap { min-width: 96px; padding: 8px 14px; border: 1px dashed var(--line-2); border-radius: 999px; color: var(--dim); text-align: center; letter-spacing: 0.2em; transition: border-color 0.2s, color 0.2s; }
+.trio.solved .gap { border: 1px solid var(--accent); color: var(--accent); letter-spacing: 0.04em; }
+.trio.missed .gap { border-style: solid; color: var(--muted); letter-spacing: 0.04em; }
+.pairs { margin: -10px 0 0; text-align: center; color: var(--muted); min-height: 1.45em; }
+.pairs b { color: var(--text); font-weight: 500; }
+.link-form { display: flex; gap: 10px; }
+.link-form input { flex: 1; min-width: 0; font: inherit; font-size: 18px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 13px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); }
+.link-form input:focus { outline: none; border-color: var(--accent); }
+.link-form input::placeholder { color: var(--dim); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.link-foot { display: flex; align-items: center; justify-content: space-between; margin-top: -8px; min-height: 32px; font-size: 14px; color: var(--muted); }
+
+/* Result: one line per pair */
+.rows { display: flex; flex-direction: column; }
+.row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: baseline; padding: 11px 0; border-top: 1px solid var(--line); font-size: 15px; }
+.row:first-child { border-top: 0; }
+.row b { font-weight: 600; color: var(--accent); }
+.row.missed b { color: var(--muted); }
+.row .n { color: var(--muted); font-variant-numeric: tabular-nums; }
