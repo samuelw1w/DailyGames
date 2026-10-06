@@ -66,9 +66,11 @@ function draw(canvas, a) {
 
 /* ---------------- Game flow ---------------- */
 
-function startGame(mode) {
+function startGame(mode, saved = null) {
   stopLoop();
-  S = { mode, dial: mode === "daily" ? dailyDial(TODAY) : makeDial(Math.random), n: 0, t: 0, phase: "spin", ticks: [], tapQueued: false, assistUsed: false, over: false };
+  const ticks = saved?.ticks ?? [];
+  S = { mode, dial: mode === "daily" ? dailyDial(TODAY) : makeDial(Math.random), n: ticks.length, t: 0, phase: "spin", ticks, tapQueued: false, assistUsed: !!saved?.assistUsed, over: false };
+  if (ticks.length >= ROUNDS) return finish(); // every round was played before the page closed
   $("#sub").textContent = mode === "daily" ? "Stop the needle on the mark" : "Practice dial";
   view.innerHTML = `
     <div class="dg-zone" id="zone" role="button" tabindex="0" aria-label="Stop the needle">
@@ -132,6 +134,7 @@ function tick() {
     if (S.tapQueued || S.t >= CLOCK) {
       S.ticks.push(S.t);
       if (assist) S.assistUsed = true;
+      if (S.mode === "daily") store.saveProgress(TODAY, { ticks: S.ticks, assistUsed: S.assistUsed });
       S.phase = "rest"; S.rest = REST;
       renderHud();
     }
@@ -210,7 +213,7 @@ $("#howBtn").addEventListener("click", howTo);
 if (!lockScreen(GAME_ID, view)) {
   if (store.getDay(TODAY)?.ticks) showSaved();
   else {
-    startGame("daily");
+    startGame("daily", store.progress(TODAY));
     if (!store.flag("seenHelp")) {
       store.setFlag("seenHelp");
       howTo();

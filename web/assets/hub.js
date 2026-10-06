@@ -127,7 +127,7 @@ function renderSeries() {
   }
 
   const shown = final ? final.total : s.total;
-  $("series").innerHTML = `
+  $("panel-series").innerHTML = `
     <div class="score">
       <b class="${started ? "" : "dim"}">${fmt(shown)}</b>
       <span>${final ? (past ? "that day's score" : "today's score") : `of ${fmt(s.max)}`}</span>
@@ -158,7 +158,7 @@ function renderEpisodes() {
       <span class="dot"></span><b>${esc(g.name)}</b><span class="status">${result ? `${points} points${counts ? "" : " · for fun"}` : counts ? "Play" : s.lineup ? "Play for fun" : "Play"}</span></a>`;
   };
   const anyLocked = ORDER.some((id) => !isUnlocked(id));
-  $("episodes").innerHTML = CATEGORIES.map((category) => {
+  $("panel-episodes").innerHTML = CATEGORIES.map((category) => {
     const act = ACTS.find((a) => a.name === category);
     return `<section class="section"><h2 class="dg-label">${esc(category)}</h2><div class="games">${act.games.map((id) => card(game(id))).join("")}</div></section>`;
   }).join("") + `<p class="note">The games in ${past ? "that day's" : "today's"} series count for points wherever you play them; the rest are just for fun.${anyLocked ? " Locked games open for good with points, or all at once with Plus." : ""}</p>`;
@@ -166,9 +166,11 @@ function renderEpisodes() {
 
 /* ---------------- Tabs ---------------- */
 
+// The panels' ids differ from the "#episodes" in the address on purpose: a matching id would
+// make the browser jump down to the panel whenever the page loads (switching days, say).
 function show(tab) {
   for (const name of ["series", "episodes"]) {
-    $(name).hidden = name !== tab;
+    $(`panel-${name}`).hidden = name !== tab;
     $(`tab-${name}`).setAttribute("aria-selected", String(name === tab));
   }
   history.replaceState(null, "", `${location.pathname}${location.search}${tab === "episodes" ? "#episodes" : ""}`);

@@ -71,8 +71,11 @@ const everyone = (day) => [{ name: "You", you: true, day: yourDay(day) }, ...FRI
 
 /* ---------------- The page ---------------- */
 
+/** A friend's name, with a label on the one being compared with you further down. */
+const nameHtml = (p) => `<span class="name">${esc(p.name)}${p.name === versus ? `<em>Comparing</em>` : ""}</span>`;
+
 let day = TODAY;
-let versus = FRIENDS[0].name; // the friend you're being compared with
+let versus = FRIENDS[0].name; // the friend you're being compared with. Their row is outlined and labelled.
 let scope = "daily";          // "daily" for one day's scores, "all" for everything added up
 
 const shift = (key, n) => { const d = parseDayKey(key); d.setDate(d.getDate() + n); return dayKey(d); };
@@ -91,7 +94,7 @@ function renderAllTime() {
   const you = people.find((p) => p.you).all, friend = FRIENDS.find((f) => f.name === versus), them = people.find((p) => p.name === versus).all;
   const side = (mine, theirs) => `<b class="${mine >= theirs && mine > 0 ? "ahead" : ""}">${fmt(mine)}</b>`;
   const row = (p, n) => {
-    const inner = `<span class="rank">${n + 1}</span><span class="face">${esc(p.name[0])}</span><span class="name">${esc(p.name)}</span>
+    const inner = `<span class="rank">${n + 1}</span><span class="face">${esc(p.name[0])}</span>${nameHtml(p)}
       <span class="total">${fmt(p.all.total)}</span><span class="how">${p.all.days ? `${p.all.days} ${p.all.days === 1 ? "day" : "days"} · ${fmt(p.all.average)} a day · best ${fmt(p.all.best)}` : "Hasn't played yet"}</span>`;
     return p.you ? `<div class="dg-card who you">${inner}</div>` : `<button class="dg-card who" type="button" data-versus="${esc(p.name)}" aria-pressed="${p.name === versus}">${inner}</button>`;
   };
@@ -104,7 +107,7 @@ function renderAllTime() {
   const line = (what, a, b) => `<div class="line">${side(a, b)}<span class="what">${what}</span>${side(b, a)}</div>`;
   $("view").innerHTML = `
     <div class="board">${people.map(row).join("")}</div>
-    <h2 class="dg-label">You and ${esc(versus)}, all time</h2>
+    <h2 class="dg-label">You and ${esc(versus)}, all time<span>Tap a friend to switch</span></h2>
     <div class="dg-card versus">
       <div class="heads">
         <div><span>You</span>${side(you.total, them.total)}</div>
@@ -132,7 +135,7 @@ function render() {
   const num = (d, value) => (d ? value : "–");
 
   const row = (p, n) => {
-    const inner = `<span class="rank">${p.day ? n + 1 : ""}</span><span class="face">${esc(p.name[0])}</span><span class="name">${esc(p.name)}</span>
+    const inner = `<span class="rank">${p.day ? n + 1 : ""}</span><span class="face">${esc(p.name[0])}</span>${nameHtml(p)}
       <span class="total">${p.day ? fmt(p.day.total) : "–"}</span><span class="how">${esc(how(p.day))}</span>`;
     return p.you ? `<div class="dg-card who you ${p.day ? "" : "out"}">${inner}</div>`
       : `<button class="dg-card who ${p.day ? "" : "out"}" type="button" data-versus="${esc(p.name)}" aria-pressed="${p.name === versus}">${inner}</button>`;
@@ -154,7 +157,7 @@ function render() {
 
   $("view").innerHTML = `
     <div class="board">${people.map(row).join("")}</div>
-    <h2 class="dg-label">You and ${esc(versus)}</h2>
+    <h2 class="dg-label">You and ${esc(versus)}<span>Tap a friend to switch</span></h2>
     <div class="dg-card versus">
       <div class="heads">
         <div><span>You</span>${side(you?.total ?? null, them?.total ?? null, num(you, you && fmt(you.total)))}</div>

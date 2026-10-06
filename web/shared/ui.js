@@ -7,6 +7,9 @@ import { GAMES } from "./registry.js";
 import { seriesState, pointsFor, wallet, FINALE } from "./series.js";
 import { LOCKED, isPlus, isUnlocked, unlockGame, dayQuery, activeDay } from "./account.js";
 
+// Page transitions (shared/blinds.js) close in the colour of the game being opened.
+globalThis.dgBlinds?.setGameColors(Object.fromEntries(GAMES.map((g) => [g.id, g.accent])));
+
 export const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 /** Open a dialog. `body` is trusted HTML. Closes on the button, Escape or a click outside. */

@@ -41,10 +41,18 @@ let crowd = null; // cached promise of today's crowd stats
 const crowdStats = () => (crowd ??= getStats(GAME_ID, TODAY));
 
 /* ---------------- Game flow ---------------- */
-function startGame(mode) {
-  S = { mode, rounds: mode === "daily" ? dailyRounds(TODAY) : practiceRounds(), idx: 0, results: [], over: false };
-  renderRound();
+function startGame(mode, saved = null) {
+  S = { mode, rounds: mode === "daily" ? dailyRounds(TODAY) : practiceRounds(), idx: saved?.idx ?? 0, results: saved?.results ?? [], over: false };
+  // Left after answering a round: carry on from the next one.
+  if (S.results[S.idx]) return next();
+  renderRound(saved?.deadline);
 }
+
+/**
+ * Keep the day's answers and when the current round's clock runs out, so leaving the page
+ * carries on from the same round. The clock keeps running while the page is closed.
+ */
+const save = () => S.mode === "daily" && store.saveProgress(TODAY, { idx: S.idx, results: S.results, deadline: S.deadline });
 
 /** Bar color for a round's score: accent for a good one, yellow for middling, red for a miss. */
 const segClass = (score) => (grade(score) >= 3 ? "on" : grade(score) === 2 ? "mid" : "bad");
@@ -53,7 +61,7 @@ function renderTracker() {
   tracker.innerHTML = S.rounds.map((r, i) => `<i class="${S.results[i] ? segClass(S.results[i].score) : i === S.idx && !S.over ? "now" : ""}"></i>`).join("");
 }
 
-function renderRound() {
+function renderRound(deadline) {
   const r = S.rounds[S.idx], sc = SCALES[r.scale];
   renderTracker();
   view.innerHTML = `
@@ -90,7 +98,7 @@ function renderRound() {
     <div id="result"></div>
   </section>`;
   wireInput(r);
-  startTimer();
+  startTimer(deadline);
   setTimeout(() => $("#guess")?.focus({ preventScroll: true }), 60);
 }
 
@@ -132,14 +140,16 @@ function wireInput(round) {
 }
 
 /* ---------------- Timer ---------------- */
-function startTimer() {
+/** Run the round's clock until `deadline` (a Date.now() time), or for a full round. */
+function startTimer(deadline = Date.now() + ROUND_SECS * 1000) {
   stopTimer();
   const arc = $("#arc"), num = $("#tnum"), slot = $("#slot");
   const C = 2 * Math.PI * 33;
   arc.style.strokeDasharray = C;
-  const t0 = performance.now();
-  const tick = (now) => {
-    const left = Math.max(0, ROUND_SECS - (now - t0) / 1000);
+  S.deadline = deadline;
+  save();
+  const tick = () => {
+    const left = Math.max(0, (deadline - Date.now()) / 1000);
     arc.style.strokeDashoffset = C * (1 - left / ROUND_SECS);
     num.textContent = Math.ceil(left) + "s";
     slot.classList.toggle("urgent", left <= 10);
@@ -157,6 +167,7 @@ function submit(item) {
   const r = S.rounds[S.idx];
   const { pos, score } = scoreAnswer(r, item ? item.id : null);
   S.results[S.idx] = { itemId: item?.id ?? null, name: item?.name ?? null, emoji: item?.emoji ?? null, score, pos, timedOut: !item };
+  save();
   reveal(r, item, pos, score);
 }
 
@@ -366,7 +377,7 @@ if (!lockScreen(GAME_ID, view)) {
   const saved = store.getDay(TODAY);
   if (saved?.rows) showSummary("daily", saved.rows, saved.total);
   else {
-    startGame("daily");
+    startGame("daily", store.progress(TODAY));
     if (!store.flag("seenHelp")) {
       // First visit: explain the rules before the clock starts.
       store.setFlag("seenHelp");

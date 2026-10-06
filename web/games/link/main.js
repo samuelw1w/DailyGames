@@ -21,10 +21,13 @@ let S = null;
 
 const segClass = (r) => (!r.solved ? "bad" : r.points >= 20 ? "on" : "mid");
 
-function startGame(mode) {
-  S = { mode, links: mode === "daily" ? dailyLinks(TODAY) : practiceLinks(), n: 0, answers: Array.from({ length: ROUNDS }, () => ({ guesses: [], hint: false })) };
+function startGame(mode, saved = null) {
+  S = { mode, links: mode === "daily" ? dailyLinks(TODAY) : practiceLinks(), n: saved?.n ?? 0, answers: saved?.answers ?? Array.from({ length: ROUNDS }, () => ({ guesses: [], hint: false })) };
   render();
 }
+
+/** Keep the day's tries, so leaving the page carries on from the same pair. */
+const save = () => S.mode === "daily" && store.saveProgress(TODAY, { n: S.n, answers: S.answers });
 
 /** Draw round `S.n`. Once it's settled (solved or out of tries) the answer is shown with a button on. */
 function render() {
@@ -51,10 +54,11 @@ function render() {
     const g = clean($("#guess").value);
     if (!g) return $("#guess").focus();
     answer.guesses.push(g);
+    save();
     render();
   });
-  $("#hintBtn")?.addEventListener("click", () => { answer.hint = true; render(); });
-  $("#nextBtn")?.addEventListener("click", () => (S.n === ROUNDS - 1 ? finish() : (S.n++, render())));
+  $("#hintBtn")?.addEventListener("click", () => { answer.hint = true; save(); render(); });
+  $("#nextBtn")?.addEventListener("click", () => (S.n === ROUNDS - 1 ? finish() : (S.n++, save(), render())));
   setTimeout(() => ($("#guess") ?? $("#nextBtn"))?.focus({ preventScroll: true }), 60);
 }
 
@@ -106,7 +110,7 @@ $("#howBtn").addEventListener("click", howTo);
 if (!lockScreen(GAME_ID, view)) {
   if (store.getDay(TODAY)?.answers) showSaved();
   else {
-    startGame("daily");
+    startGame("daily", store.progress(TODAY));
     if (!store.flag("seenHelp")) { store.setFlag("seenHelp"); howTo(); }
   }
 }

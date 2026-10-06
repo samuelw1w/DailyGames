@@ -22,10 +22,13 @@ let S = null;
 
 const rowsHtml = (word, guesses) => guesses.map((g) => `<div class="jot-row ${g === word ? "hit" : ""}"><b>${g}</b><span>${g === word ? "Found it" : `<i>${shared(word, g)}</i>in common`}</span></div>`).join("");
 
-function startGame(mode) {
-  S = { mode, word: mode === "daily" ? dailyWord(TODAY) : practiceWord(), guesses: [], notes: {} };
+function startGame(mode, saved = null) {
+  S = { mode, word: mode === "daily" ? dailyWord(TODAY) : practiceWord(), guesses: saved?.guesses ?? [], notes: saved?.notes ?? {} };
   render();
 }
+
+/** Keep the day's guesses and notes, so leaving the page carries on from here. */
+const save = () => S.mode === "daily" && store.saveProgress(TODAY, { guesses: S.guesses, notes: S.notes });
 
 function render() {
   const { word, guesses, mode } = S, left = GUESSES - guesses.length;
@@ -48,13 +51,16 @@ function render() {
     if (!validGuess(g)) { $("#hint").textContent = "Type five letters."; input.focus(); return; }
     if (S.guesses.includes(g)) { $("#hint").textContent = "You've tried that one."; input.select(); return; }
     S.guesses.push(g);
-    g === word || S.guesses.length === GUESSES ? finish() : render();
+    if (g === word || S.guesses.length === GUESSES) return finish();
+    save();
+    render();
   });
   // Notes cycle: plain, crossed out, marked as in.
   view.querySelectorAll("[data-ch]").forEach((b) => b.addEventListener("click", () => {
     const next = { undefined: "out", out: "in", in: undefined }[S.notes[b.dataset.ch]];
     if (next) S.notes[b.dataset.ch] = next; else delete S.notes[b.dataset.ch];
     b.className = next ?? "";
+    save();
   }));
   setTimeout(() => $("#guess")?.focus({ preventScroll: true }), 60);
 }
@@ -106,7 +112,7 @@ $("#howBtn").addEventListener("click", howTo);
 if (!lockScreen(GAME_ID, view)) {
   if (store.getDay(TODAY)?.guesses) showSaved();
   else {
-    startGame("daily");
+    startGame("daily", store.progress(TODAY));
     if (!store.flag("seenHelp")) { store.setFlag("seenHelp"); howTo(); }
   }
 }

@@ -180,10 +180,24 @@ const flip = ([fwd, up]) => [S.round.x <= S.course.length ? fwd : -fwd, up];
 
 /* ---------------- Game flow ---------------- */
 
-function startGame(mode) {
+function startGame(mode, saved = null) {
   stopLoop();
   const course = mode === "daily" ? dailyCourse(TODAY) : makeCourse(Math.random);
-  S = { mode, course, round: createRound(), taps: [], marks: "", trails: [], green: null, assistUsed: false, over: false, note: "Space bar on desktop" };
+  S = { mode, course, round: createRound(), taps: [], marks: "", trails: [], green: null, assistUsed: !!saved?.assistUsed, over: false, note: "Space bar on desktop" };
+  // Picking up a hole left part way: play the saved strokes again, instantly. A ball still in
+  // the air when the page closed counts as hit.
+  for (const [i, j] of saved?.taps ?? []) {
+    if (S.round.done) break;
+    S.taps.push([i, j]);
+    if (S.round.feet !== null) { putt(course, S.round, i, j); S.marks += "○"; continue; }
+    const shot = startShot(course, S.round, i, j), trail = [[shot.x, shot.y]];
+    while (!shot.done) { stepShot(course, shot); trail.push([shot.x, shot.y]); }
+    endShot(course, S.round, shot);
+    S.trails.push(trail);
+    S.marks += shot.wet ? "●💧" : "●";
+  }
+  if (S.round.done) return finish();
+  if (S.taps.length) S.note = "";
   view.innerHTML = `
     <div class="dg-row"><span id="stroke"></span><span id="left"></span></div>
     <div class="dg-zone" id="zone" role="button" tabindex="0" aria-label="Lock aim, then lock power">
@@ -265,6 +279,7 @@ function tick() {
     if (!tapped) { S.j = (S.j + 1) % POWER_PERIOD; return; }
     S.taps.push([S.aimTick, S.j]);
     if (assist) S.assistUsed = true;
+    if (S.mode === "daily") store.saveProgress(TODAY, { taps: S.taps, assistUsed: S.assistUsed });
     if (putting) {
       S.green.result = putt(course, round, S.aimTick, S.j);
       S.marks += "○";
@@ -439,7 +454,7 @@ $("#howBtn").addEventListener("click", howTo);
 if (!lockScreen(GAME_ID, view)) {
   if (store.getDay(TODAY)?.taps) showSaved();
   else {
-    startGame("daily");
+    startGame("daily", store.progress(TODAY));
     if (!store.flag("seenHelp")) {
       store.setFlag("seenHelp");
       howTo();
