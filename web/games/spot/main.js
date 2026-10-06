@@ -39,6 +39,8 @@ let raf = 0, last = 0, acc = 0;
 let paused = false;
 let assist = !!store.flag("assist");
 
+const windText = ({ wind }) => (wind ? `Wind ${Math.abs(wind)} ${wind < 0 ? "left" : "right"}` : "No wind");
+
 /* ---------------- Drawing ---------------- */
 
 const ease = (p) => 1 - (1 - p) ** 3;
@@ -86,7 +88,7 @@ function draw(canvas, a) {
   ctx.beginPath(); ctx.moveTo(...feet); ctx.lineTo(...hands); ctx.stroke();
 
   // The reticle: an accent ring that keeps sweeping until the tap.
-  const aim = shot ? shot.target : reticleAt(S.game, S.k, Math.floor(t));
+  const aim = shot ? shot.aim : reticleAt(S.game, S.k, Math.floor(t));
   const next = shot ? aim : reticleAt(S.game, S.k, Math.floor(t) + 1);
   const r = mix(aim, next, t - Math.floor(t));
   ctx.strokeStyle = rgba(C.accent, shot ? 0.45 : 1);
@@ -98,7 +100,8 @@ function draw(canvas, a) {
   // The ball: flies from the spot to where the reticle was, shrinking with distance.
   let ball = SPOT, size = 17, alpha = 1;
   if (shot) {
-    ball = mix(SPOT, shot.target, p);
+    // Aimed at the ring, carried off it by the wind: the ball bends more the further it flies.
+    ball = mix(mix(SPOT, shot.aim, p), mix(SPOT, shot.target, p), p);
     size = 17 - 8 * p;
     const rest = phase === "rest" ? 1 - S.rest / REST : 0;
     if (shot.outcome === "saved") ball = [ball[0], ball[1] + rest * 26];          // parried: drops
@@ -115,7 +118,7 @@ function startGame(mode) {
   stopLoop();
   const game = mode === "daily" ? dailyGame(TODAY) : makeDay(Math.random);
   S = { mode, game, outcomes: [], ticks: [], assistUsed: false, over: false };
-  $("#sub").textContent = mode === "daily" ? "Five kicks. Read the keeper" : "Practice shootout";
+  $("#sub").textContent = `${mode === "daily" ? "Five kicks" : "Practice"} · ${windText(game)}`;
   view.innerHTML = `
     <div class="dg-zone" id="zone" role="button" tabindex="0" aria-label="Shoot">
       <canvas class="dg-stage" id="pitch"></canvas>
@@ -298,7 +301,7 @@ function howTo() {
     body: `<ol>
       <li><b>One tap per kick.</b> The green ring sweeps around the goal. Tap anywhere, or press Space, and the ball goes where the ring is.</li>
       <li><b>Read the keeper.</b> He repeats the same routine on every kick. He saves anything near him, and reaches further the way he's already moving.</li>
-      <li><b>Mind the frame.</b> The ring strays past the posts and over the bar. Shoot then and you miss.</li>
+      <li><b>Mind the frame and the wind.</b> The ring strays past the posts and over the bar, and the day's wind carries every shot sideways. The stronger the wind, the further off the ring the ball lands.</li>
       <li><b>${KICKS} kicks, ${CLOCK / TICKS_PER_SEC} seconds each.</b> The ring gets faster every kick. If the clock runs out, the ball is struck wherever the ring is.</li>
       <li><b>Slow motion</b> halves the speed if the timing is too quick. Results earned with it are marked ${ASSIST_MARK}.</li>
     </ol>`,

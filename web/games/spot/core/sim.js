@@ -8,7 +8,7 @@ import { hash, mulberry32 } from "../../../shared/random.js";
 
 export const GAME_ID = "spot";
 export const WORLD = { w: 800, h: 600 };
-export const GOAL = { left: 100, right: 700, top: 120, ground: 320 };
+export const GOAL = { left: 170, right: 630, top: 150, ground: 320 };
 export const SPOT = [400, 545]; // where the ball sits
 export const TICKS_PER_SEC = 60;
 export const KICKS = 5;
@@ -19,17 +19,18 @@ export const ASSIST_MARK = "🐢";
 
 // The reticle strays a little outside the frame, so going for the corners risks a miss.
 const SWEEP = { left: 55, right: 745, top: 85, bottom: 308 };
-const STATIONS = [170, 285, 400, 515, 630]; // spots on the line the keeper moves between
-const REACH = { x: 190, y: 135 };           // how far the keeper's dive covers, sideways and up
-const LEAN = 45;                            // a moving keeper covers this much more the way he's going
+const STATIONS = [225, 312, 400, 488, 575]; // spots on the line the keeper moves between
+const REACH = { x: 150, y: 125 };           // how far the keeper's dive covers, sideways and up
+const LEAN = 40;                            // a moving keeper covers this much more the way he's going
 const MAX_ROUTINE = 5 * TICKS_PER_SEC;
-const FAIR_CHANCE = 15; // ticks
-const CHEST = 85;                           // height of the keeper's middle above the ground
+const FAIR_CHANCE = 7; // ticks
+const WIND = 16;                            // sideways push on the ball for each point of wind
+const CHEST = 80;                           // height of the keeper's middle above the ground
 
 /* ---------------- The day ---------------- */
 
 /**
- * A day's shootout: the keeper's routine and the reticle's path for each kick.
+ * A day's shootout: the keeper's routine, the wind, and the reticle's path for each kick.
  * The keeper repeats the same routine on every kick (stand, shuffle to the next spot, stand...),
  * which is what makes him readable. The reticle gets faster with each kick.
  */
@@ -52,19 +53,21 @@ export function makeDay(rng) {
     stops.forEach((s, i) => {
       const from = STATIONS[s], to = STATIONS[stops[(i + 1) % count]];
       const hold = 24 + 6 * pick(6);                                // stands for 0.4 to 0.9 s
-      const move = Math.ceil(Math.abs(to - from) / (3 + pick(3)));  // then shuffles across
+      const move = Math.ceil(Math.abs(to - from) / (4 + pick(3)));  // then shuffles across
       legs.push({ start: period, from, to, hold, move });
       period += hold + move;
     });
   } while (period > MAX_ROUTINE);
 
-  // Reticle paths. A path is only kept if it offers a scoring chance at least a quarter of a
-  // second long, so no kick comes down to luck.
-  const game = { keeper: { legs, period }, kicks: [] };
+  // Wind blows across the goal all day (negative = to the left) and carries every shot with it.
+  const wind = pick(7) - 3;
+  // Reticle paths. A path is only kept if it offers a scoring chance at least a tenth of a
+  // second long, so no kick is impossible.
+  const game = { keeper: { legs, period }, wind, kicks: [] };
   for (let k = 0; k < KICKS; k++) {
     do {
-      const xPeriod = 2 * (104 - 9 * k + pick(5)); // there and back: about 3.5 s on kick 1, 2.3 s on kick 5
-      const yPeriod = 2 * (37 + pick(14));
+      const xPeriod = 2 * (58 - 5 * k + pick(4)); // there and back: about 2 s on kick 1, 1.3 s on kick 5
+      const yPeriod = 2 * (19 + pick(9));
       game.kicks[k] = { xPeriod, yPeriod, xStart: pick(xPeriod), yStart: pick(yPeriod) };
     } while (longestChance(game, k) < FAIR_CHANCE);
   }
@@ -112,12 +115,14 @@ export function keeperAt(game, t) {
 /* ---------------- A kick ---------------- */
 
 /**
- * Take kick `k` on tick `t` (1 to CLOCK). Returns { outcome, target, keeper, cover }:
- * `outcome` is "goal", "saved", "wide" or "over"; `target` is where the ball goes;
- * `keeper` where he was; `cover` the middle of what his dive reaches.
+ * Take kick `k` on tick `t` (1 to CLOCK). Returns { outcome, aim, target, keeper, cover }:
+ * `outcome` is "goal", "saved", "wide" or "over"; `aim` is where the reticle was and `target`
+ * where the wind carries the ball to; `keeper` where he was; `cover` the middle of what his
+ * dive reaches.
  */
 export function shoot(game, k, t) {
-  const target = reticleAt(game, k, t);
+  const aim = reticleAt(game, k, t);
+  const target = [aim[0] + game.wind * WIND, aim[1]];
   const keeper = keeperAt(game, t);
   const cover = [keeper.x + keeper.v * LEAN, GOAL.ground - CHEST];
   const dx = (target[0] - cover[0]) / REACH.x, dy = (target[1] - cover[1]) / REACH.y;
@@ -126,7 +131,7 @@ export function shoot(game, k, t) {
   if (target[0] < GOAL.left || target[0] > GOAL.right) outcome = "wide";
   else if (target[1] < GOAL.top) outcome = "over";
   else if (stretch <= 1) outcome = "saved";
-  return { outcome, target, keeper, cover, stretch };
+  return { outcome, aim, target, keeper, cover, stretch };
 }
 
 /**

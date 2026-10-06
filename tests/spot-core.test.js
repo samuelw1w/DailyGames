@@ -28,8 +28,8 @@ test("every day for two years is fair: each kick can be scored and can be saved"
         if (outcome === "goal") { goals++; run++; widest = Math.max(widest, run); } else run = 0;
         if (outcome === "saved") saves++;
       }
-      assert.ok(widest >= 15, `${day} kick ${k + 1}: no scoring chance lasts a quarter of a second`);
-      assert.ok(goals / CLOCK < 0.7 && saves > 0, `${day} kick ${k + 1}: the keeper is no obstacle`);
+      assert.ok(widest >= 7, `${day} kick ${k + 1}: no scoring chance lasts a tenth of a second`);
+      assert.ok(goals / CLOCK < 0.5 && saves > 0, `${day} kick ${k + 1}: the keeper is no obstacle`);
     }
   }
 });
@@ -40,7 +40,7 @@ test("the keeper repeats his routine and stays on his line", () => {
     const a = keeperAt(game, t), b = keeperAt(game, t + game.keeper.period);
     assert.deepEqual(a, b);
     assert.ok(a.x > GOAL.left && a.x < GOAL.right);
-    assert.ok(Math.abs(keeperAt(game, t + 1).x - a.x) <= 6, "no teleporting");
+    assert.ok(Math.abs(keeperAt(game, t + 1).x - a.x) <= 7, "no teleporting");
   }
 });
 
@@ -49,13 +49,14 @@ test("shots: at the keeper is saved, outside the frame misses, and the reticle m
   const seen = new Set();
   for (let k = 0; k < KICKS; k++) {
     for (let t = 1; t <= CLOCK; t++) {
-      const { outcome, target, keeper } = shoot(game, k, t);
+      const { outcome, aim, target, keeper } = shoot(game, k, t);
       seen.add(outcome);
       const inFrame = target[0] >= GOAL.left && target[0] <= GOAL.right && target[1] >= GOAL.top;
       assert.equal(outcome === "wide" || outcome === "over", !inFrame);
       if (inFrame && Math.abs(target[0] - keeper.x) < 60 && target[1] > GOAL.top + 40) assert.equal(outcome, "saved", "straight at him");
       const next = reticleAt(game, k, t + 1);
-      assert.ok(Math.abs(next[0] - target[0]) < 12 && Math.abs(next[1] - target[1]) < 12);
+      assert.ok(Math.abs(next[0] - aim[0]) < 20 && Math.abs(next[1] - aim[1]) < 20);
+      assert.equal(target[0] - aim[0], game.wind * 16, "the wind carries the ball");
     }
   }
   assert.deepEqual([...seen].sort(), ["goal", "over", "saved", "wide"]);

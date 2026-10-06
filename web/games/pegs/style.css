@@ -1,0 +1,2 @@
+/* Pegs-only styles. Shared look (colors, fonts, buttons, cards, play area) lives in /shared/theme.css. */
+:root { --accent: #f5d547; --tint: 4%; }

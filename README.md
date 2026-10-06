@@ -8,9 +8,11 @@ A hub of small daily puzzle games. Everyone gets the same puzzles each day, and 
 | --- | --- | --- |
 | Middleman | [`web/games/middleman`](web/games/middleman) | Name the thing halfway between two others by weight, speed, size, age or price. |
 | Orbit | [`web/games/orbit`](web/games/orbit) | A ship circles a planet. Tap to let go and sling it from planet to planet; reach the goal in five jumps. |
-| Pins | [`web/games/pins`](web/games/pins) | Three frames of bowling. One tap sets where the ball starts, a second sets its hook. |
-| Spot | [`web/games/spot`](web/games/spot) | Five penalty kicks. Tap to shoot where the sweeping reticle is; the keeper repeats a routine you can read. |
-| Skip | [`web/games/skip`](web/games/skip) | Skip a stone. Tap each time it touches the water; the timing tightens with every skip. |
+| Pins | [`web/games/pins`](web/games/pins) | Three frames of bowling. One tap sets where the ball starts, a second sets its hook. Every ball has its own drift and a small random slip on release. |
+| Spot | [`web/games/spot`](web/games/spot) | Five penalty kicks at a small goal. Tap to shoot where the fast-moving reticle is, allow for the wind, and read the keeper's routine. |
+| Skip | [`web/games/skip`](web/games/skip) | Skip a stone. Tap each time it touches the water; every hop is a different length and height, and the timing tightens with every skip. |
+| Pegs | [`web/games/pegs`](web/games/pegs) | A ball slides across the top; tap to drop it through a field of pegs. Clear every yellow peg with five balls. |
+| Stakes | [`web/games/stakes`](web/games/stakes) | Start with 100 and play one hand at each of five casino tables: roulette, blackjack, baccarat, three card poker and craps. The result is how many times over you multiplied it. |
 
 ## How it's built
 
@@ -43,7 +45,9 @@ DailyGames/
 │       │       └── puzzle.js                    #   daily level, scoring, share text
 │       ├── pins/                                # same shape: UI + core/sim.js (ball and pins), core/puzzle.js (frames, scoring)
 │       ├── spot/                                # UI + core/sim.js (reticle, keeper, kicks)
-│       └── skip/                                # UI + core/sim.js (touches, timing windows)
+│       ├── skip/                                # UI + core/sim.js (touches, timing windows)
+│       ├── pegs/                                # UI + core/sim.js (ball and pegs), levels.js, solver.js, puzzle.js
+│       └── stakes/                              # UI + core/tables.js (the five casino tables)
 ├── api/                     # Backend (Cloudflare Worker)
 │   ├── src/
 │   │   ├── index.js         # Router
@@ -51,7 +55,7 @@ DailyGames/
 │   │   ├── games/           # One module per game: validates answers, computes the score
 │   │   └── lib/             # HTTP and date helpers
 │   └── migrations/          # D1 (SQLite) schema
-├── tools/                   # `npm run orbit:levels` rebuilds Orbit's level list
+├── tools/                   # `npm run orbit:levels` and `npm run pegs:levels` rebuild the checked level lists
 ├── tests/                   # `npm test`: game rules + API against a real SQLite DB
 ├── docs/                    # Architecture, API reference, adding a new game
 └── wrangler.toml            # One deploy serves both web/ and the API
@@ -85,4 +89,4 @@ npm run deploy                          # prints your URL, e.g. https://daily-ga
 
 After that, `npm run deploy` publishes any change. To use your own domain, add it under the Worker's **Settings → Domains & Routes** in the Cloudflare dashboard.
 
-**Changing a game's catalog** (for example `web/games/middleman/core/catalog.js`) changes the puzzles for every date, including today. Deploy those edits right after midnight. The same goes for Orbit's physics (`web/games/orbit/core/sim.js`): after any change there, run `npm run orbit:levels` to rebuild the list of fair levels.
+**Changing a game's catalog** (for example `web/games/middleman/core/catalog.js`) changes the puzzles for every date, including today. Deploy those edits right after midnight. The same goes for Orbit's physics (`web/games/orbit/core/sim.js`): after any change there, run `npm run orbit:levels` to rebuild the list of fair levels. Pegs works the same way with `npm run pegs:levels`.

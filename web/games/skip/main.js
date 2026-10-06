@@ -52,13 +52,15 @@ function project(z) {
 
 /** The stone `t` ticks after the throw: the water under it and its height above that. */
 function stoneAt(t) {
-  const { ticks } = S;
+  const { ticks, lifts } = S;
   let i = 0;
   while (i < ticks.length - 1 && ticks[i] <= t) i++;
   // The throw is the second half of a hop: it starts at the top of its arc.
   const from = i ? ticks[i - 1] : -FIRST_TOUCH, to = ticks[i];
   const p = Math.min(1, (t - from) / (to - from));
-  return { ...project(t), lift: (to - from) * 1.5 * 4 * p * (1 - p) };
+  // Heavy gravity: the stone hangs near the top of its hop, then drops onto the water fast.
+  const q = 2 * p - 1;
+  return { ...project(t), lift: (to - from) * 1.6 * lifts[i] * (1 - q * q * q * q) };
 }
 
 function draw(canvas, a) {
@@ -109,7 +111,7 @@ function draw(canvas, a) {
 function startGame(mode) {
   stopLoop();
   const water = mode === "daily" ? dailyWater(TODAY) : makeWater(Math.random);
-  S = { mode, water, ticks: touches(water), counts: [], throws: [], assistUsed: false, over: false };
+  S = { mode, water, counts: [], throws: [], assistUsed: false, over: false };
   $("#sub").textContent = mode === "daily" ? "Three stones. Best one counts" : "Practice water";
   view.innerHTML = `
     <div class="dg-zone" id="zone" role="button" tabindex="0" aria-label="Throw, then tap each time the stone touches the water">
@@ -134,7 +136,7 @@ function stopLoop() {
 }
 
 function nextStone() {
-  Object.assign(S, { phase: "ready", t: 0, n: 0, taps: [], failed: false, sunkAt: null, tapQueued: false });
+  Object.assign(S, touches(S.water, S.counts.length), { phase: "ready", t: 0, n: 0, taps: [], failed: false, sunkAt: null, tapQueued: false });
   renderHud();
 }
 
@@ -300,8 +302,8 @@ function howTo() {
     title: "How to play",
     body: `<ol>
       <li><b>Tap to throw.</b> Then tap anywhere, or press Space, each time the stone touches the water to send it on.</li>
-      <li><b>It gets tighter.</b> Every skip is a little shorter and forgives a little less. Tap at the wrong moment, or not at all, and the stone sinks.</li>
-      <li><b>Find the day's rhythm.</b> The hops follow the same pattern for every stone, so each throw teaches you the next.</li>
+      <li><b>Watch every hop.</b> Some are long and high, some short and flat, and the stone drops fast at the end. No two stones bounce alike.</li>
+      <li><b>It gets tighter.</b> Each skip forgives a little less. Tap at the wrong moment, or not at all, and the stone sinks.</li>
       <li><b>${STONES} stones a day.</b> Your best one counts. ${MAX_SKIPS} skips and the stone sails out of sight.</li>
       <li><b>Slow motion</b> halves the speed if the timing is too quick. Results earned with it are marked ${ASSIST_MARK}.</li>
     </ol>`,

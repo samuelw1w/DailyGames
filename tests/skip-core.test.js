@@ -6,45 +6,52 @@ import { MAX_SKIPS, STONES, FIRST_TOUCH, dailyWater, touches, windowAt, countSki
 
 const dayAfter = (start, n) => { const d = new Date(`${start}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const TODAY = new Date().toISOString().slice(0, 10); // UTC today is always "today" somewhere
+const ticksOf = (water, stone) => touches(water, stone).ticks;
 
 test("the same day always gives the same water", () => {
   assert.deepEqual(dailyWater("2026-10-05"), dailyWater("2026-10-05"));
-  assert.deepEqual(touches(dailyWater("2026-10-05")), touches(dailyWater("2026-10-05")));
+  assert.deepEqual(touches(dailyWater("2026-10-05"), 1), touches(dailyWater("2026-10-05"), 1));
+  assert.notDeepEqual(ticksOf(dailyWater("2026-10-05"), 0), ticksOf(dailyWater("2026-10-05"), 1), "each stone bounces its own way");
 });
 
 test("every day for two years is playable: touches never crowd each other", () => {
   for (let i = 0; i < 730; i++) {
-    const day = dayAfter("2026-10-05", i), ticks = touches(dailyWater(day));
-    assert.equal(ticks.length, MAX_SKIPS + 1);
-    assert.equal(ticks[0], FIRST_TOUCH);
-    for (let n = 1; n < ticks.length; n++) {
-      const gap = ticks[n] - ticks[n - 1];
-      assert.ok(gap >= 14, `${day}: hop ${n} is only ${gap} ticks`);
-      assert.ok(windowAt(n - 1) + windowAt(n) < gap, `${day}: the windows around touches ${n - 1} and ${n} overlap`);
+    const day = dayAfter("2026-10-05", i);
+    for (let stone = 0; stone < STONES; stone++) {
+      const { ticks, lifts } = touches(dailyWater(day), stone);
+      assert.equal(ticks.length, MAX_SKIPS + 1);
+      assert.equal(lifts.length, MAX_SKIPS + 1);
+      assert.equal(ticks[0], FIRST_TOUCH);
+      for (let n = 1; n < ticks.length; n++) {
+        const gap = ticks[n] - ticks[n - 1];
+        assert.ok(gap >= 12, `${day}: hop ${n} is only ${gap} ticks`);
+        assert.ok(windowAt(n - 1) + windowAt(n) < gap, `${day}: the windows around touches ${n - 1} and ${n} overlap`);
+      }
     }
   }
 });
 
 test("the window shrinks with every skip, down to a floor", () => {
-  assert.equal(windowAt(0), 9);
+  assert.equal(windowAt(0), 7);
   for (let n = 1; n < MAX_SKIPS; n++) assert.ok(windowAt(n) <= windowAt(n - 1));
-  assert.ok(windowAt(5) < 7 && windowAt(MAX_SKIPS - 1) >= 1.5);
+  assert.ok(windowAt(5) < 5 && windowAt(MAX_SKIPS - 1) >= 1.5);
 });
 
 test("counting skips", () => {
-  const water = dailyWater("2026-10-05"), ticks = touches(water);
-  assert.equal(countSkips(water, ticks.slice(0, MAX_SKIPS)), MAX_SKIPS, "perfect timing skips all the way");
-  assert.equal(countSkips(water, ticks.slice(0, 7)), 7, "stops tapping after seven");
-  assert.equal(countSkips(water, []), 0);
-  assert.equal(countSkips(water, [ticks[0] + 9, ticks[1] - 8]), 2, "inside the window, early or late");
-  assert.equal(countSkips(water, [ticks[0] + 10]), 0, "just outside it");
-  assert.equal(countSkips(water, [ticks[0], ticks[1], ticks[2] - 20, ticks[2], ticks[3]]), 2, "one wild tap sinks the stone");
-  assert.equal(countSkips(water, [ticks[20] + 5]), 0, "can't join in halfway");
+  const water = dailyWater("2026-10-05"), ticks = ticksOf(water, 0);
+  assert.equal(countSkips(water, 0, ticks.slice(0, MAX_SKIPS)), MAX_SKIPS, "perfect timing skips all the way");
+  assert.equal(countSkips(water, 0, ticks.slice(0, 7)), 7, "stops tapping after seven");
+  assert.equal(countSkips(water, 0, []), 0);
+  assert.equal(countSkips(water, 0, [ticks[0] + 7, ticks[1] - 6]), 2, "inside the window, early or late");
+  assert.equal(countSkips(water, 0, [ticks[0] + 8]), 0, "just outside it");
+  assert.equal(countSkips(water, 0, [ticks[0], ticks[1], ticks[2] - 20, ticks[2], ticks[3]]), 2, "one wild tap sinks the stone");
+  assert.equal(countSkips(water, 0, [ticks[20] + 5]), 0, "can't join in halfway");
 });
 
 test("a day is three stones, best one counts", () => {
-  const water = dailyWater("2026-10-05"), ticks = touches(water);
-  const counts = playGame(water, [ticks.slice(0, 3), [], ticks.slice(0, 11)]);
+  const water = dailyWater("2026-10-05");
+  const counts = playGame(water, [ticksOf(water, 0).slice(0, 3), [], ticksOf(water, 2).slice(0, 11)]);
+  assert.equal(countSkips(water, 1, ticksOf(water, 0).slice(0, 11)) < 11, true, "another stone's timing doesn't carry over");
   assert.deepEqual(counts, [3, 0, 11]);
   assert.equal(bestOf(counts), 11);
   assert.equal(resultLabel(1, false), "1 skip");
@@ -60,8 +67,8 @@ beforeEach(() => { env = { DB: fakeD1(), ALLOWED_ORIGINS: "" }; });
 const post = (body) => handleApi(new Request("https://games.test/api/games/skip/plays", { method: "POST", body: JSON.stringify(body) }), env);
 
 test("API: skips are counted by the server", async () => {
-  const ticks = touches(dailyWater(TODAY));
-  const throws = [ticks.slice(0, 4), ticks.slice(0, 9), [ticks[0] + 30]];
+  const water = dailyWater(TODAY);
+  const throws = [ticksOf(water, 0).slice(0, 4), ticksOf(water, 1).slice(0, 9), [ticksOf(water, 2)[0] + 30]];
   const res = await post({ day: TODAY, clientId: "client-skip-1", answers: { throws, assist: false } });
   assert.equal(res.status, 201);
   assert.equal((await res.json()).score, 9);

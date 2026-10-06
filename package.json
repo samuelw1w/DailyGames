@@ -12,6 +12,7 @@
     "db:migrate": "wrangler d1 migrations apply daily-games --remote",
     "deploy": "wrangler deploy",
     "orbit:levels": "node tools/orbit-levels.js",
+    "pegs:levels": "node tools/pegs-levels.js",
     "test": "node --test --no-warnings \"tests/*.test.js\""
   },
   "devDependencies": {

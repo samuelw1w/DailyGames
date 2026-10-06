@@ -1,0 +1,55 @@
+/* Stakes-only styles. Shared look (colors, fonts, buttons, cards) lives in /shared/theme.css. */
+:root { --accent: #2dd4bf; --tint: 5%; }
+.dg-row b { color: var(--text); font-weight: 600; }
+
+/* One table: its name, a line on how it pays, what's been dealt, then the choices. */
+.table { display: flex; flex-direction: column; gap: 18px; }
+.table h2 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
+.table .rule { margin: -12px 0 0; color: var(--muted); }
+
+.felt { min-height: 132px; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+.hand { display: flex; align-items: center; gap: 12px; }
+.hand .who { width: 64px; color: var(--muted); font-size: 14px; }
+.hand .sum { margin-left: auto; color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.cards { display: flex; gap: 6px; flex-wrap: wrap; }
+.card { width: 40px; height: 54px; border: 1px solid var(--line-2); border-radius: 8px; display: grid; place-items: center; font-weight: 600; font-size: 16px; line-height: 1.1; text-align: center; animation: dg-enter 0.3s ease-out both; }
+.card i { display: block; font-style: normal; font-size: 14px; color: var(--muted); }
+.card.warm i { color: var(--accent); }
+.card.back { border-style: dashed; color: var(--dim); }
+
+.wheel { align-self: center; width: 96px; height: 96px; border-radius: 50%; border: 2px solid var(--line-2); display: grid; place-items: center; font-size: 40px; font-weight: 600; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--dim); }
+.wheel.red { border-color: var(--bad); color: var(--bad); }
+.wheel.black { border-color: var(--text); color: var(--text); }
+.wheel.green { border-color: var(--accent); color: var(--accent); }
+.dice { display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: center; }
+.roll { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 14px; animation: dg-enter 0.3s ease-out both; }
+.die { width: 30px; height: 30px; border: 1px solid var(--line-2); border-radius: 7px; display: grid; place-items: center; font-weight: 600; color: var(--text); }
+.roll.last .die { border-color: var(--accent); }
+
+/* Choices */
+.lab { margin: 0 0 -8px; font-size: 12px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+.stake, .opts { display: grid; gap: 8px; }
+.stake { grid-template-columns: repeat(4, 1fr); }
+.opts { grid-template-columns: repeat(var(--cols, 2), 1fr); }
+.opt { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 11px 6px; display: flex; flex-direction: column; align-items: center; gap: 1px; font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; transition: background 0.15s, border-color 0.15s; }
+.opt small { font-weight: 400; font-size: 12px; color: var(--muted); }
+.opt:hover:not(:disabled) { background: var(--surface-2); }
+.opt[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.opt:disabled { opacity: 0.35; cursor: not-allowed; }
+.numbers { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+.numbers .opt { padding: 7px 0; font-size: 13px; border-radius: 8px; }
+.numbers .opt.red { color: var(--bad); }
+
+/* How the table went */
+.outcome { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.outcome b { font-size: 44px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.outcome.up b { color: var(--accent); } .outcome.down b { color: var(--bad); } .outcome.flat b { color: var(--muted); }
+.outcome span { color: var(--muted); }
+
+/* Day summary: one line per table */
+.rows { display: flex; flex-direction: column; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) 54px; gap: 10px; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.row:first-child { border-top: 0; }
+.row .what { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.row .n.up { color: var(--accent); } .row .n.down { color: var(--bad); }

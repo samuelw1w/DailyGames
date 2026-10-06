@@ -3,7 +3,7 @@
 // `status`: "live" can be played; "soon" shows a dimmed teaser card.
 // `accent`: the game's own color. Every game gets a different one.
 // `category`: the hub section the card sits in. Sections appear in the order of CATEGORIES.
-export const CATEGORIES = ["Word", "Knowledge", "Play", "Logic"];
+export const CATEGORIES = ["Word", "Knowledge", "Play", "Tables", "Logic"];
 
 export const GAMES = [
   {
@@ -26,6 +26,17 @@ export const GAMES = [
     path: "games/orbit/",
     launchDay: "2026-10-05",
     maxScore: 5,
+    status: "live",
+  },
+  {
+    id: "pegs",
+    name: "Pegs",
+    tagline: "Drop a ball through the pegs. Clear every yellow one.",
+    category: "Play",
+    accent: "#F5D547",
+    path: "games/pegs/",
+    launchDay: "2026-10-05",
+    maxScore: 18,
     status: "live",
   },
   {
@@ -59,6 +70,17 @@ export const GAMES = [
     path: "games/skip/",
     launchDay: "2026-10-05",
     maxScore: 30,
+    status: "live",
+  },
+  {
+    id: "stakes",
+    name: "Stakes",
+    tagline: "Take 100 through five casino tables.",
+    category: "Tables",
+    accent: "#2DD4BF",
+    path: "games/stakes/",
+    launchDay: "2026-10-05",
+    maxScore: 1000,
     status: "live",
   },
 ];

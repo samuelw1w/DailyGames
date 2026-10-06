@@ -15,7 +15,9 @@ const BALL_MASS = 5;      // a pin weighs 1
 const SPEED = 5;          // ball speed up the lane, world units per tick
 const HOOK_OUT = 1.6;     // sideways speed a full hook starts with, away from the curve
 const HOOK_CURVE = 0.048; // sideways pull per tick that brings a full hook back
-const DRIFT = 0.0025;     // sideways pull per tick for each point of lane drift
+const DRIFT = 0.0025;
+const SLIP_X = 7;         // a release can slip up to this far sideways
+const SLIP_HOOK = 0.14;   // and hook up to this much more or less than aimed     // sideways pull per tick for each point of lane drift
 const BOUNCE = 0.85;      // how springy collisions are
 const SLIDE = 0.965;      // pins keep this much of their speed each tick
 const TOPPLE = 6;         // a pin pushed further than this from its spot is down
@@ -30,27 +32,36 @@ for (let row = 0; row < 4; row++) {
 /* ---------------- The lane ---------------- */
 
 /**
- * A lane's conditions: how many ticks the position marker and the hook meter take to sweep
- * there and back, and how hard the lane drifts (negative = left, positive = right).
+ * Conditions for one ball. No two balls roll alike: each gets its own sweep speeds, its own
+ * starting point for the position marker, its own drift (negative = left, positive = right),
+ * and a small slip on release that nudges where the ball starts and how much it hooks. The
+ * slip is the one thing the player can't see coming.
  */
 export function makeLane(rng) {
+  const posPeriod = 90 + 10 * Math.floor(rng() * 5);   // even, so the sweep turns on a whole tick
   return {
-    posPeriod: 140 + 20 * Math.floor(rng() * 4),   // even, so the sweep turns on a whole tick
-    hookPeriod: 120 + 20 * Math.floor(rng() * 3),  // divisible by 4, so it can start at "straight"
+    posPeriod,
+    hookPeriod: 72 + 8 * Math.floor(rng() * 4),        // divisible by 4, so it can start at "straight"
+    posStart: Math.floor(rng() * posPeriod),
     drift: Math.floor(rng() * 7) - 3,
+    slipX: (2 * rng() - 1) * SLIP_X,
+    slipHook: (2 * rng() - 1) * SLIP_HOOK,
   };
 }
 
-/** The lane for a date. Same for everyone. */
-export const dailyLane = (day) => makeLane(mulberry32(hash("pins:" + day)));
+/** The day's game, identified by a seed. Same for everyone. */
+export const dailyLane = (day) => ({ seed: hash("pins:" + day) });
+
+/** Conditions for ball number `n` (0-based, counted across the whole game) of a day. */
+export const ballLane = (day, n) => makeLane(mulberry32((day.seed + 0x9e3779b1 * (n + 1)) >>> 0));
 
 // Both taps pick a moment in a back-and-forth sweep. 0 at the start, 1 at the turn, 0 again.
 const sweep = (i, period) => (i <= period / 2 ? i : period - i) / (period / 2);
 
 /** Ball's starting x for a first tap on tick `i` of the position sweep (left edge to right edge). */
 export function posAt(lane, i) {
-  const lo = LANE.left + BALL_R + 4, hi = LANE.right - BALL_R - 4;
-  return lo + (hi - lo) * sweep(i, lane.posPeriod);
+  const lo = LANE.left + BALL_R + SLIP_X + 3, hi = LANE.right - BALL_R - SLIP_X - 3; // room for a slip either way
+  return lo + (hi - lo) * sweep((lane.posStart + i) % lane.posPeriod, lane.posPeriod);
 }
 
 /** Hook for a second tap on tick `j` of the hook sweep: -1 curves left, 0 is straight, 1 curves right. */
@@ -66,15 +77,15 @@ export const hookStart = (lane) => lane.hookPeriod / 4;
  * of the two taps. Step it with stepShot() until `done`.
  */
 export function createShot(lane, standing, pos, hook) {
-  const h = hookAt(lane, hook);
+  const h = hookAt(lane, hook) + lane.slipHook;
   return {
     tick: 0, done: false, gutter: false,
-    ball: { x: posAt(lane, pos), y: LANE.foul, vx: -h * HOOK_OUT, vy: -SPEED, ax: h * HOOK_CURVE + lane.drift * DRIFT },
+    ball: { x: posAt(lane, pos) + lane.slipX, y: LANE.foul, vx: -h * HOOK_OUT, vy: -SPEED, ax: h * HOOK_CURVE + lane.drift * DRIFT },
     pins: SPOTS.map(([x, y], i) => ({ x, y, vx: 0, vy: 0, up: standing[i], gone: !standing[i] })),
   };
 }
 
-/** Where the ball would be `t` ticks after release if it hit nothing. For drawing the aim line. */
+/** Where the ball would be `t` ticks after a clean release if it hit nothing. For drawing the aim line. */
 export function aimPoint(lane, pos, hook, t) {
   const h = hookAt(lane, hook);
   const ax = h * HOOK_CURVE + lane.drift * DRIFT;

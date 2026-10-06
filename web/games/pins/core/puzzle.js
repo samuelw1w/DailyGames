@@ -1,6 +1,6 @@
 // Pins game rules around the physics in sim.js: frames, bowling scoring and share text.
 // Pure functions only, so the browser and the API import this same file and always agree.
-import { createShot, stepShot, downed } from "./sim.js";
+import { ballLane, createShot, stepShot, downed } from "./sim.js";
 
 export const GAME_ID = "pins";
 export const FRAMES = 3;
@@ -53,13 +53,17 @@ export function playBall(lane, game, pos, hook) {
 
 /**
  * Replay a whole game from its throws, each [pos, hook] (the ticks of the two taps).
- * Returns the finished game, or null if the throws don't make exactly one complete game.
+ * `day` is from dailyLane(). Returns the finished game, or null if the throws don't make
+ * exactly one complete game.
  */
-export function playGame(lane, balls) {
+export function playGame(day, balls) {
+  if (!Array.isArray(balls)) return null;
   const game = createGame();
-  for (const [pos, hook] of balls) {
-    if (game.done) return null;
-    playBall(lane, game, pos, hook);
+  for (let n = 0; n < balls.length; n++) {
+    const lane = ballLane(day, n), b = balls[n];
+    const tick = (t, period) => Number.isInteger(t) && t >= 0 && t < period;
+    if (game.done || !Array.isArray(b) || b.length !== 2 || !tick(b[0], lane.posPeriod) || !tick(b[1], lane.hookPeriod)) return null;
+    playBall(lane, game, b[0], b[1]);
   }
   return game.done ? game : null;
 }

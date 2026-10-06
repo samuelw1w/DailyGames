@@ -53,6 +53,7 @@ a { color: inherit; }
 .dg-segs { display: flex; gap: 6px; }
 .dg-segs i { flex: 1; height: 6px; border-radius: 999px; background: var(--surface-2); transition: background 0.3s; }
 .dg-segs i.on { background: var(--c, var(--accent)); }
+.dg-segs i.now { background: var(--line-2); }
 .dg-segs i.bad { background: var(--bad); }
 .dg-segs i.mid { background: var(--warn); }
 

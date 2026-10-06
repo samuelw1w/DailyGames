@@ -5,8 +5,10 @@
 //     Throws HttpError(400) for invalid input. `picks` may be empty for games without answers.
 import middleman from "./middleman.js";
 import orbit from "./orbit.js";
+import pegs from "./pegs.js";
 import pins from "./pins.js";
 import skip from "./skip.js";
 import spot from "./spot.js";
+import stakes from "./stakes.js";
 
-export const GAMES = new Map([middleman, orbit, pins, skip, spot].map((g) => [g.id, g]));
+export const GAMES = new Map([middleman, orbit, pegs, pins, skip, spot, stakes].map((g) => [g.id, g]));

@@ -4,8 +4,6 @@ import { GAME_ID, MAX_SCORE, playGame, scoreGame } from "../../../web/games/pins
 import { dailyLane } from "../../../web/games/pins/core/sim.js";
 import { HttpError } from "../lib/http.js";
 
-const MAX_BALLS = 7; // two open frames and a spare in the last one
-
 export default {
   id: GAME_ID,
   maxScore: MAX_SCORE,
@@ -17,16 +15,10 @@ export default {
    * @returns {{ score: number, picks: {round:number, answer:string}[], detail: object }}
    */
   checkAnswers(day, answers) {
-    const lane = dailyLane(day);
-    const balls = answers?.balls;
-    const tick = (t, period) => Number.isInteger(t) && t >= 0 && t < period;
-    const valid = Array.isArray(balls) && balls.length <= MAX_BALLS &&
-      balls.every((b) => Array.isArray(b) && b.length === 2 && tick(b[0], lane.posPeriod) && tick(b[1], lane.hookPeriod));
-    if (!valid) throw new HttpError(400, "answers.balls must be a list of [position tick, hook tick] pairs.");
-    if (typeof answers.assist !== "boolean") throw new HttpError(400, "answers.assist must be true or false.");
-
-    const game = playGame(lane, balls);
-    if (!game) throw new HttpError(400, "answers.balls isn't one complete game.");
+    if (typeof answers?.assist !== "boolean") throw new HttpError(400, "answers.assist must be true or false.");
+    const game = playGame(dailyLane(day), answers.balls);
+    if (!game) throw new HttpError(400, "answers.balls must be one complete game: a [position tick, hook tick] pair per ball.");
+    const { balls } = answers;
     const { frames, total } = scoreGame(game.rolls);
     return {
       score: total,

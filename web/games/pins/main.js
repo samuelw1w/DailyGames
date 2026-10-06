@@ -2,7 +2,7 @@
 import { GAME_ID, FRAMES, MAX_SCORE, ASSIST_MARK, createGame, applyRoll, scoreGame, shareText } from "./core/puzzle.js";
 import {
   WORLD, LANE, TICKS_PER_SEC, BALL_R, PIN_R, SPOTS,
-  dailyLane, makeLane, posAt, hookStart, aimPoint, createShot, stepShot, downed,
+  dailyLane, ballLane, posAt, hookStart, aimPoint, createShot, stepShot, downed,
 } from "./core/sim.js";
 import { dayKey, puzzleNumber } from "../../shared/daily.js";
 import { gameStore, clientId } from "../../shared/storage.js";
@@ -40,7 +40,7 @@ let raf = 0, last = 0, acc = 0;
 let paused = false;
 let assist = !!store.flag("assist");
 
-const laneText = ({ drift }) => (drift ? `Lane drifts ${Math.abs(drift)} ${drift < 0 ? "left" : "right"}` : "Level lane");
+const driftText = ({ drift }) => (drift ? `Drift ${Math.abs(drift)} ${drift < 0 ? "left" : "right"}` : "No drift");
 
 /* ---------------- Drawing ---------------- */
 
@@ -100,9 +100,9 @@ function draw(canvas, a) {
 
 function startGame(mode) {
   stopLoop();
-  const lane = mode === "daily" ? dailyLane(TODAY) : makeLane(Math.random);
-  S = { mode, lane, game: createGame(), balls: [], assistUsed: false, over: false, note: "Space bar on desktop" };
-  $("#sub").textContent = `${mode === "daily" ? "Three frames" : "Practice"} · ${laneText(lane)}`;
+  const day = mode === "daily" ? dailyLane(TODAY) : { seed: Math.floor(Math.random() * 2 ** 31) };
+  S = { mode, day, game: createGame(), balls: [], assistUsed: false, over: false };
+  $("#sub").textContent = mode === "daily" ? "Three frames. No two balls roll alike" : "Practice game";
   view.innerHTML = `
     <div class="dg-zone" id="zone" role="button" tabindex="0" aria-label="Bowl">
       <canvas class="dg-stage" id="lane"></canvas>
@@ -126,7 +126,9 @@ function stopLoop() {
 }
 
 function nextBall() {
-  Object.assign(S, { phase: "pos", i: 0, j: 0, pos: 0, shot: null, trail: [], down: null, tapQueued: false });
+  const lane = ballLane(S.day, S.balls.length);
+  Object.assign(S, { lane, phase: "pos", i: 0, j: 0, pos: 0, shot: null, trail: [], down: null, tapQueued: false });
+  S.note = `Frame ${S.game.frame + 1} · ${driftText(lane)}`;
   renderHud();
 }
 
@@ -171,7 +173,7 @@ function tick() {
   S.tapQueued = false;
 
   if (S.phase === "pos") {
-    if (tapped) { S.pos = S.i; S.j = hookStart(lane); S.phase = "hook"; S.note = `Frame ${game.frame + 1}`; renderHud(); }
+    if (tapped) { S.pos = S.i; S.j = hookStart(lane); S.phase = "hook"; renderHud(); }
     else S.i = (S.i + 1) % lane.posPeriod;
   } else if (S.phase === "hook") {
     if (tapped) {
@@ -192,7 +194,7 @@ function tick() {
     if (shot.done) land();
   } else if (--S.rest <= 0) {
     if (game.done) finish();
-    else { S.note = `Frame ${game.frame + 1}`; nextBall(); }
+    else nextBall();
   }
 }
 
@@ -212,7 +214,7 @@ function land() {
 }
 
 function finish() {
-  const { game, mode, lane } = S;
+  const { game, mode } = S;
   S.over = true;
   const { total } = scoreGame(game.rolls);
   const result = { total, rolls: game.rolls, balls: S.balls, assist: S.assistUsed };
@@ -222,7 +224,7 @@ function finish() {
     store.saveDay(TODAY, result, total);
     sent = submitPlay(GAME_ID, TODAY, clientId(), { balls: result.balls, assist: result.assist });
   }
-  showSummary(mode, lane, result, sent);
+  showSummary(mode, result, sent);
 }
 
 /* ---------------- Result ---------------- */
@@ -238,7 +240,7 @@ function bestResult() {
   return best;
 }
 
-function showSummary(mode, lane, result, sent = null) {
+function showSummary(mode, result, sent = null) {
   stopLoop();
   S = null;
   const daily = mode === "daily";
@@ -247,7 +249,7 @@ function showSummary(mode, lane, result, sent = null) {
   const title = total === MAX_SCORE ? "Perfect game." : total >= 70 ? "On a roll." : total >= 50 ? "Solid bowling." : total >= 30 ? "A few got away." : "Gutter trouble.";
   const share = shareText(daily ? `Pins #${PUZZLE_NO}` : "Pins practice", rolls, result.assist);
   const st = store.stats(), best = bestResult();
-  $("#sub").textContent = `${daily ? "Today's game" : "Practice"} · ${laneText(lane)}`;
+  $("#sub").textContent = daily ? "Today's game" : "Practice game";
 
   view.innerHTML = `
   <section class="dg-summary dg-enter">
@@ -279,7 +281,7 @@ function showSummary(mode, lane, result, sent = null) {
   if (daily && sent && strikes >= FRAMES) confetti(160);
 }
 
-const showSaved = () => showSummary("daily", dailyLane(TODAY), store.getDay(TODAY));
+const showSaved = () => showSummary("daily", store.getDay(TODAY));
 
 /* ---------------- Slow motion and help ---------------- */
 
@@ -303,7 +305,7 @@ function howTo() {
       <li><b>Two taps per ball.</b> The ball slides along the foul line: tap anywhere, or press Space, to stop it where you want to bowl from.</li>
       <li><b>Then set the hook.</b> The dashed line swings from a left curve to a right curve. Tap again to throw along it. A hooked ball swings wide and cuts back in.</li>
       <li><b>Three frames, real bowling scoring.</b> Two balls a frame; a strike or spare earns bonus pins from your next balls, and extra balls in the last frame. A perfect game is ${MAX_SCORE}.</li>
-      <li><b>Read the lane.</b> Some days it drifts left or right and pulls every ball that way.</li>
+      <li><b>No two balls roll alike.</b> The drift changes with every ball, the marker starts somewhere new, and each release slips a little, so the same two taps never give the same roll twice.</li>
       <li><b>Slow motion</b> halves the speed if the timing is too quick. Results earned with it are marked ${ASSIST_MARK}.</li>
     </ol>`,
     onClose: () => { paused = false; last = performance.now(); },

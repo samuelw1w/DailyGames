@@ -6,7 +6,7 @@ Base path: `/api`. All bodies are JSON. Errors look like `{ "error": "Human-read
 `200 { "ok": true }`
 
 ### `GET /api/games`
-Games the API knows about. `200 { "games": ["middleman", "orbit", "pins", "skip", "spot"] }`
+Games the API knows about. `200 { "games": ["middleman", "orbit", "pegs", "pins", "skip", "spot", "stakes"] }`
 
 ### `POST /api/games/:game/plays`
 Record a finished daily game. Call this once, when the player finishes.
@@ -23,6 +23,8 @@ Record a finished daily game. Call this once, when the player finishes.
 | | Pins: `{ "balls": [[43, 37], [36, 55], …], "assist": false }`, for each ball the tick of the position tap and of the hook tap. |
 | | Spot: `{ "ticks": [129, 45, 100, 74, 61], "assist": false }`, the tick each of the five kicks was taken on. |
 | | Skip: `{ "throws": [[47], [50, 103, 167], []], "assist": false }`, for each of the three stones the tick of every tap after the throw. |
+| | Pegs: `{ "drops": [39, 2, 24], "assist": false }`, the launcher tick each ball was dropped on. |
+| | Stakes: `{ "plays": [{ "bet": 25, "pick": "red" }, { "bet": 19, "moves": "HS" }, { "bet": 24, "pick": "banker" }, { "bet": 18, "play": true }, { "bet": 9, "pick": "pass" }] }`, one bet and choice per table played (fewer than five only if the bankroll hit zero). |
 
 Responses:
 - `201 { "score": 412, "rank": { "players": 120, "betterThan": 64 } }`
@@ -31,7 +33,7 @@ Responses:
 
 `betterThan` is the percentage of *other* players today with a lower score.
 
-Orbit's score is `6 − jumps used` for reaching the goal (so 5 is a one-jump win) and `0` for running out of jumps. Pins is the bowling score out of 90, Spot the goals out of 5, Skip the best stone's skips out of 30.
+Orbit's score is `6 − jumps used` for reaching the goal (so 5 is a one-jump win) and `0` for running out of jumps. Pins is the bowling score out of 90, Spot the goals out of 5, Skip the best stone's skips out of 30. Pegs is yellow pegs cleared (out of 10) plus 2 for each ball left over when all are cleared. Stakes is the final bankroll, starting from 100; its score chart tops out at 1000 but bigger wins are possible.
 
 ### `GET /api/games/:game/days/:day/stats[?score=N]`
 Crowd stats for a day. Future dates return `400`, so nobody can preview tomorrow's answers.

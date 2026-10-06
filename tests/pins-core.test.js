@@ -2,12 +2,15 @@ import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { handleApi } from "../api/src/index.js";
 import { fakeD1 } from "./helpers/fake-d1.js";
-import { LANE, SPOTS, BALL_R, dailyLane, posAt, hookAt, hookStart, aimPoint, createShot, stepShot, downed } from "../web/games/pins/core/sim.js";
+import { LANE, SPOTS, BALL_R, dailyLane, ballLane, posAt, hookAt, hookStart, aimPoint, createShot, stepShot, downed } from "../web/games/pins/core/sim.js";
 import { MAX_SCORE, createGame, applyRoll, playGame, scoreGame, shareText } from "../web/games/pins/core/puzzle.js";
 
 const dayAfter = (start, n) => { const d = new Date(`${start}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const TODAY = new Date().toISOString().slice(0, 10); // UTC today is always "today" somewhere
 const ALL = Array(10).fill(true);
+/** A lane with nothing random about it, for testing the physics on its own. */
+const plain = (drift = 0) => ({ posPeriod: 160, hookPeriod: 140, posStart: 0, drift, slipX: 0, slipHook: 0 });
+const strikes = (day, count) => Array.from({ length: count }, (_, n) => { const t = findThrow(ballLane(day, n), 10); return [t.pos, t.hook]; });
 const roll = (lane, standing, pos, hook) => { const shot = createShot(lane, standing, pos, hook); while (!shot.done) stepShot(shot); return shot; };
 const count = (shot) => downed(shot).filter(Boolean).length;
 const knock = (n) => ALL.map((_, i) => i < n);
@@ -20,25 +23,30 @@ function findThrow(lane, want, standing = ALL) {
   return null;
 }
 
-test("the same day always gives the same lane, and lanes are well formed", () => {
-  assert.deepEqual(dailyLane("2026-10-05"), dailyLane("2026-10-05"));
-  for (let i = 0; i < 730; i++) {
-    const lane = dailyLane(dayAfter("2026-10-05", i));
-    assert.equal(lane.posPeriod % 2, 0);
-    assert.equal(lane.hookPeriod % 4, 0);
-    assert.ok(lane.drift >= -3 && lane.drift <= 3);
-    assert.equal(hookAt(lane, hookStart(lane)), 0, "the hook meter starts at straight");
-    assert.ok(posAt(lane, 0) - BALL_R > LANE.left && posAt(lane, lane.posPeriod / 2) + BALL_R < LANE.right);
+test("the same day always gives the same balls, and every ball's conditions are well formed", () => {
+  assert.deepEqual(ballLane(dailyLane("2026-10-05"), 3), ballLane(dailyLane("2026-10-05"), 3));
+  assert.notDeepEqual(ballLane(dailyLane("2026-10-05"), 0), ballLane(dailyLane("2026-10-05"), 1), "no two balls roll alike");
+  for (let i = 0; i < 365; i++) {
+    for (let n = 0; n < 7; n++) {
+      const lane = ballLane(dailyLane(dayAfter("2026-10-05", i)), n);
+      assert.equal(lane.posPeriod % 2, 0);
+      assert.equal(lane.hookPeriod % 4, 0);
+      assert.ok(lane.drift >= -3 && lane.drift <= 3);
+      assert.ok(lane.posStart >= 0 && lane.posStart < lane.posPeriod);
+      assert.ok(Math.abs(lane.slipX) <= 7 && Math.abs(lane.slipHook) <= 0.14);
+      assert.equal(hookAt(lane, hookStart(lane)), 0, "the hook meter starts at straight");
+      for (let t = 0; t < lane.posPeriod; t++) assert.ok(posAt(lane, t) - BALL_R - 7 > LANE.left && posAt(lane, t) + BALL_R + 7 < LANE.right, "a slip never starts the ball in the gutter");
+    }
   }
 });
 
-test("the same two taps always knock down the same pins", () => {
-  const lane = dailyLane("2026-10-05");
+test("the same two taps on the same ball always knock down the same pins", () => {
+  const lane = ballLane(dailyLane("2026-10-05"), 0);
   assert.deepEqual(roll(lane, ALL, 40, 50), roll(lane, ALL, 40, 50));
 });
 
-test("the aim line follows the path the ball really takes", () => {
-  const lane = { posPeriod: 160, hookPeriod: 140, drift: 2 };
+test("the aim line follows the path of a clean release", () => {
+  const lane = plain(2);
   const shot = createShot(lane, ALL, 30, 100);
   for (let t = 1; t <= 30; t++) {
     stepShot(shot);
@@ -49,17 +57,17 @@ test("the aim line follows the path the ball really takes", () => {
 
 test("every day has a strike in it, and a wild throw finds the gutter", () => {
   for (let i = 0; i < 60; i++) {
-    const day = dayAfter("2026-10-05", i), lane = dailyLane(day);
-    assert.ok(findThrow(lane, 10), `${day}: no strike possible`);
+    const day = dayAfter("2026-10-05", i);
+    for (let n = 0; n < 2; n++) assert.ok(findThrow(ballLane(dailyLane(day), n), 10), `${day} ball ${n + 1}: no strike possible`);
   }
-  const lane = { posPeriod: 160, hookPeriod: 140, drift: 0 };
+  const lane = plain();
   const wide = roll(lane, ALL, 0, 0); // far left, hooking further left
   assert.ok(wide.gutter);
   assert.equal(count(wide), 0);
 });
 
 test("pins that are already down stay out of the way", () => {
-  const lane = { posPeriod: 160, hookPeriod: 140, drift: 0 };
+  const lane = plain();
   const onlyHead = ALL.map((_, i) => i === 0);
   const hit = findThrow(lane, 1, onlyHead);
   assert.deepEqual(downed(roll(lane, onlyHead, hit.pos, hit.hook)), onlyHead);
@@ -97,10 +105,9 @@ beforeEach(() => { env = { DB: fakeD1(), ALLOWED_ORIGINS: "" }; });
 const post = (body) => handleApi(new Request("https://games.test/api/games/pins/plays", { method: "POST", body: JSON.stringify(body) }), env);
 
 test("API: a game is rolled again and scored by the server", async () => {
-  const lane = dailyLane(TODAY);
-  const { pos, hook } = findThrow(lane, 10);
-  const balls = Array(5).fill([pos, hook]); // the same strike five times
-  assert.equal(playGame(lane, balls).rolls.length, 5);
+  const day = dailyLane(TODAY);
+  const balls = strikes(day, 5);
+  assert.equal(playGame(day, balls).rolls.length, 5);
   const res = await post({ day: TODAY, clientId: "client-pins-1", answers: { balls, assist: false } });
   assert.equal(res.status, 201);
   assert.equal((await res.json()).score, MAX_SCORE);
@@ -111,15 +118,14 @@ test("API: a game is rolled again and scored by the server", async () => {
 });
 
 test("API: incomplete or malformed games are rejected with a 400", async () => {
-  const lane = dailyLane(TODAY);
-  const { pos, hook } = findThrow(lane, 10);
-  const strike = [pos, hook];
+  const day = dailyLane(TODAY);
+  const five = strikes(day, 5);
   for (const answers of [
-    [strike],
-    { balls: Array(5).fill(strike) },
-    { balls: Array(4).fill(strike), assist: false },
-    { balls: Array(6).fill(strike), assist: false },
-    { balls: [[lane.posPeriod, 0]], assist: false },
+    five,
+    { balls: five },
+    { balls: five.slice(0, 4), assist: false },
+    { balls: [...five, five[0]], assist: false },
+    { balls: [[ballLane(day, 0).posPeriod, 0]], assist: false },
     { balls: [[1.5, 0]], assist: false },
     { balls: [[1, 2, 3]], assist: false },
   ]) {

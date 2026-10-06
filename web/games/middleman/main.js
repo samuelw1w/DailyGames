@@ -3,13 +3,24 @@ import {
   GAME_ID, ROUNDS_PER_DAY, SCALES, fmt, posOf, midValue, grade, SQUARES,
   dailyRounds, practiceRounds, scoreAnswer, closest, search,
 } from "./core/puzzle.js";
-import { dayKey, puzzleNumber, msUntilMidnight, formatCountdown } from "../../shared/daily.js";
+import { dayKey, puzzleNumber } from "../../shared/daily.js";
 import { gameStore, clientId } from "../../shared/storage.js";
 import { submitPlay, getStats } from "../../shared/api.js";
+import { modal, wireCopy, startCountdown, showRank } from "../../shared/ui.js";
 import { confetti } from "../../shared/confetti.js";
 import { GAMES } from "../../shared/registry.js";
 
 const META = GAMES.find((g) => g.id === GAME_ID);
+
+// Middleman's own icon set: one line drawing per measure, drawn in the game's accent color.
+const ICON_PATHS = {
+  weight: '<path d="M9.2 8a2.8 2.8 0 1 1 5.6 0"/><path d="M7.5 8h9l2.5 11.5h-14z"/>',
+  speed: '<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4.2-5.2"/>',
+  size: '<rect x="3" y="8" width="18" height="8" rx="1.5"/><path d="M7.5 8v3M12 8v4.5M16.5 8v3"/>',
+  year: '<path d="M7 4h10M7 20h10"/><path d="M8 4c0 4.2 8 4.6 8 8s-8 3.8-8 8"/><path d="M16 4c0 4.2-8 4.6-8 8s8 3.8 8 8"/>',
+  price: '<path d="M4 12.2V5a1 1 0 0 1 1-1h7.2L20 11.8 11.8 20z"/><circle cx="8.6" cy="8.6" r="1.1"/>',
+};
+const icon = (scale) => `<svg class="mm-icon" viewBox="0 0 24 24" aria-hidden="true">${ICON_PATHS[scale]}</svg>`;
 const ROUND_SECS = 45;
 const TODAY = dayKey();
 const PUZZLE_NO = puzzleNumber(META.launchDay, TODAY);
@@ -34,21 +45,20 @@ function startGame(mode) {
   renderRound();
 }
 
+/** Bar color for a round's score: accent for a good one, yellow for middling, red for a miss. */
+const segClass = (score) => (grade(score) >= 3 ? "on" : grade(score) === 2 ? "mid" : "bad");
+
 function renderTracker() {
-  tracker.innerHTML = S.rounds.map((r, i) => {
-    const sc = SCALES[r.scale], res = S.results[i];
-    const cls = i === S.idx && !S.over ? "now" : res ? `done g${grade(res.score)}` : "";
-    return `<div class="tk ${cls}"><span class="ic">${sc.icon}</span><span class="lbl">${sc.label}</span><span class="sc">${res ? res.score : i + 1}</span></div>`;
-  }).join("");
+  tracker.innerHTML = S.rounds.map((r, i) => `<i class="${S.results[i] ? segClass(S.results[i].score) : i === S.idx && !S.over ? "now" : ""}"></i>`).join("");
 }
 
 function renderRound() {
   const r = S.rounds[S.idx], sc = SCALES[r.scale];
   renderTracker();
   view.innerHTML = `
-  <section class="dg-card play dg-enter">
+  <section class="play dg-enter">
     <div class="prompt">
-      <span class="dg-chip">${S.mode === "practice" ? "Practice · " : ""}Round ${S.idx + 1} of ${ROUNDS_PER_DAY} · ${sc.icon} ${sc.label}</span>
+      <span class="dg-chip">${S.mode === "practice" ? "Practice · " : ""}Round ${S.idx + 1} of ${ROUNDS_PER_DAY} · ${icon(r.scale)} ${sc.label}</span>
       <h2>Halfway between ${esc(r.a.name)} and ${esc(r.b.name)}?</h2>
       <p>${sc.q}</p>
     </div>
@@ -63,7 +73,7 @@ function renderRound() {
       </div>
       <div class="rail" id="rail">
         <span class="stem l"></span><span class="stem r"></span>
-        <div class="track"><div class="band"></div><div class="ticks">${Array.from({ length: 21 }, (_, i) => `<i class="${i % 5 === 0 ? "major" : ""}" style="left:${i * 5}%"></i>`).join("")}</div><div class="target"></div></div>
+        <div class="track"><div class="band"></div><div class="target"></div></div>
         <div class="tlabel" id="tlabel"></div>
       </div>
     </div>
@@ -161,7 +171,7 @@ function reveal(r, item, pos, score) {
     el.classList.add("shown");
   }
   const bench = $("#bench"), rail = $("#rail");
-  $("#tlabel").textContent = "MIDDLE ≈ " + fm.main;
+  $("#tlabel").textContent = "Middle ≈ " + fm.main;
   requestAnimationFrame(() => bench.classList.add("revealed"));
 
   if (item) dropPin(rail, item, pos, show);
@@ -173,7 +183,7 @@ function reveal(r, item, pos, score) {
     g.textContent = b.item.emoji;
     g.title = `${b.item.name} · ${show(b.item.v).main}`;
     g.style.left = b.pos * 100 + "%";
-    g.style.top = 86 + (i % 2) * 16 + "px";
+    g.style.top = 58 + (i % 2) * 12 + "px";
     rail.appendChild(g);
     setTimeout(() => g.classList.add("on"), (reduce ? 0 : 1150) + i * 140);
   });
@@ -183,7 +193,7 @@ function reveal(r, item, pos, score) {
     <div class="score"><b id="scoreNum">0</b><span>/100</span></div>
     <p class="verdict">${verdictFor(score, item)}</p>
     <p class="detail">${detailFor(r, item, pos, fm)}</p>
-    <div class="best"><span class="lab">Closest in the catalog</span>${best.map((b) => pill(b.item, show(b.item.v).main)).join("")}</div>
+    <div class="best"><span class="lab">Closest</span>${best.map((b) => pill(b.item, show(b.item.v).main)).join("")}</div>
     <div class="best" id="crowdRow" hidden></div>
     <button class="dg-btn next" id="nextBtn" type="button">${last ? "See today's score →" : "Next round →"}</button>
   </div>`;
@@ -206,13 +216,7 @@ function dropPin(rail, item, pos, show) {
   rail.appendChild(pin);
   const hop = pin.querySelector(".pin-hop");
   if (!reduce && hop.animate) {
-    hop.animate([
-      { transform: "translateY(-95px) scale(1.35)", offset: 0 },
-      { transform: "translateY(-140px) scale(1.15)", offset: 0.38 },
-      { transform: "translateY(0) scale(1)", offset: 0.82 },
-      { transform: "translateY(0) scale(1.12, .82)", offset: 0.9 },
-      { transform: "translateY(0) scale(1)", offset: 1 },
-    ], { duration: 1000, easing: "cubic-bezier(.35,0,.25,1)" });
+    hop.animate([{ transform: "translateY(-28px)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 500, easing: "ease-out" });
   }
   requestAnimationFrame(() => requestAnimationFrame(() => { pin.style.left = Math.min(1, Math.max(0, pos)) * 100 + "%"; }));
   setTimeout(() => pin.classList.add("landed"), reduce ? 0 : 950);
@@ -261,7 +265,7 @@ function detailFor(r, item, pos, fm) {
     : pos < 0 ? `It's even ${sc.loC} than the ${esc(r.a.name.toLowerCase())}.`
     : pos > 1 ? `It's even ${sc.hiC} than the ${esc(r.b.name.toLowerCase())}.`
     : e < 0.15 ? `A touch ${dir}.` : e < 0.45 ? `A bit ${dir}.` : `Too ${dir}.`;
-  return `${item.emoji} <b>${esc(item.name)}</b> comes in at <span class="m">${esc(fmt[r.scale](item.v).main)}</span>. ${mid} ${how}`;
+  return `<span class="e">${item.emoji}</span> <b>${esc(item.name)}</b> comes in at <span class="m">${esc(fmt[r.scale](item.v).main)}</span>. ${mid} ${how}`;
 }
 
 function countUp(el, to, delay, dur) {
@@ -296,105 +300,60 @@ function next() {
 }
 
 /* ---------------- Summary ---------------- */
-let cdTimer = null;
 function showSummary(mode, rows, total, sent = null) {
   stopTimer();
-  tracker.innerHTML = rows.map((r) => `<div class="tk done g${grade(r.score)}"><span class="ic">${SCALES[r.scale].icon}</span><span class="lbl">${SCALES[r.scale].label}</span><span class="sc">${r.score}</span></div>`).join("");
+  tracker.innerHTML = rows.map((r) => `<i class="${segClass(r.score)}"></i>`).join("");
   const st = store.stats();
   const title = total >= 450 ? "Perfectly balanced." : total >= 380 ? "A true middleman." : total >= 300 ? "Solidly centered." : total >= 200 ? "Leaning a little." : "Tipped the scales.";
   const shareText = `Middleman ${mode === "daily" ? "#" + PUZZLE_NO : "practice"} · ${total}/500\n` +
     rows.map((r) => `${SCALES[r.scale].icon} ${SQUARES[grade(r.score)]} ${String(r.score).padStart(3, " ")}`).join("\n");
   const daily = mode === "daily";
   view.innerHTML = `
-  <section class="dg-card summary dg-enter">
-    <div class="sum-head">
-      <div><span class="dg-chip">${daily ? `Puzzle #${PUZZLE_NO} complete` : "Practice round"}</span><h2>${title}</h2>
-      <p>${daily ? "Come back tomorrow for five new pairs." : "Practice games don't count toward your streak."}</p></div>
-      <div class="total"><b id="tot">0</b><span>/500</span></div>
+  <section class="dg-summary dg-enter">
+    <div class="dg-verdict">
+      <span class="big" id="tot">0</span><span>of 500</span>
+      <h2>${title}</h2>
+      ${daily ? "" : "<p>Practice games don't count toward your streak.</p>"}
     </div>
-    <p class="rank" id="rank" hidden></p>
-    <div class="rows">${rows.map((r) => {
-      const g = grade(r.score);
-      return `<div class="row"><span class="ic">${SCALES[r.scale].icon}</span>
-        <span class="pair"><span class="e">${r.a[1]}</span> ${esc(r.a[0])} ↔ <span class="e">${r.b[1]}</span> ${esc(r.b[0])}</span>
+    <p class="dg-rank" id="rank" hidden></p>
+    <div class="rows">${rows.map((r) => `<div class="row"><span class="ic">${icon(r.scale)}</span>
+        <span class="pair">${esc(r.a[0])} ↔ ${esc(r.b[0])}</span>
         <span class="pick">${r.timedOut ? "Out of time" : `<span class="e">${r.emoji}</span> ${esc(r.name)}`}</span>
-        <span class="bar"><i class="${g <= 1 ? "vlo" : g === 2 ? "lo" : ""}" data-w="${r.score}"></i></span><span class="n">${r.score}</span></div>`;
-    }).join("")}</div>
+        <span class="n">${r.score}</span></div>`).join("")}</div>
     ${daily ? `<div class="dg-stats">
       <div class="dg-stat"><b>${st.streak}</b><span>Day streak</span></div>
       <div class="dg-stat"><b>${st.played}</b><span>Played</span></div>
       <div class="dg-stat"><b>${st.best || total}</b><span>Best score</span></div>
       <div class="dg-stat"><b id="cd">--:--:--</b><span>Next puzzle</span></div></div>` : ""}
-    <div class="share">
-      <div class="grid-box" id="gridBox">${esc(shareText)}</div>
-      <div class="actions">
-        <button class="dg-btn" id="copyBtn" type="button">Copy result</button>
-        <button class="dg-btn plain" id="practiceBtn" type="button">${daily ? "Play a practice round" : "Another practice round"}</button>
-        ${!daily ? (store.getDay(TODAY) ? `<button class="dg-btn plain" id="backBtn" type="button">Back to today's result</button>` : `<button class="dg-btn plain" id="dailyBtn" type="button">Play today's puzzle</button>`) : ""}
-      </div>
+    <div class="dg-actions">
+      <button class="dg-btn" id="copyBtn" type="button">Copy result</button>
+      <button class="dg-btn plain" id="practiceBtn" type="button">${daily ? "Play a practice round" : "Another practice round"}</button>
+      ${!daily ? (store.getDay(TODAY) ? `<button class="dg-btn plain" id="backBtn" type="button">Back to today's result</button>` : `<button class="dg-btn plain" id="dailyBtn" type="button">Play today's puzzle</button>`) : ""}
     </div>
   </section>`;
 
   countUp($("#tot"), total, reduce ? 0 : 150, reduce ? 0 : 1100);
-  requestAnimationFrame(() => requestAnimationFrame(() =>
-    document.querySelectorAll(".row .bar i").forEach((b, i) => { b.style.transitionDelay = i * 0.1 + "s"; b.style.width = b.dataset.w + "%"; })));
-
-  const copyBtn = $("#copyBtn");
-  copyBtn.addEventListener("click", () => {
-    const done = () => { copyBtn.textContent = "Copied"; setTimeout(() => (copyBtn.textContent = "Copy result"), 1600); };
-    const fallback = () => {
-      const range = document.createRange();
-      range.selectNodeContents($("#gridBox"));
-      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
-      copyBtn.textContent = "Selected. Press Copy";
-    };
-    try { navigator.clipboard.writeText(shareText).then(done, fallback); } catch { fallback(); }
-  });
+  wireCopy($("#copyBtn"), shareText);
   $("#practiceBtn").addEventListener("click", () => { startGame("practice"); window.scrollTo({ top: 0 }); });
   $("#backBtn")?.addEventListener("click", () => { const d = store.getDay(TODAY); showSummary("daily", d.rows, d.total); });
   $("#dailyBtn")?.addEventListener("click", () => startGame("daily"));
   if (total >= 400) setTimeout(() => confetti(200), reduce ? 0 : 500);
-
-  if (cdTimer) clearInterval(cdTimer);
-  const cd = $("#cd");
-  if (cd) { const upd = () => (cd.textContent = formatCountdown(msUntilMidnight())); upd(); cdTimer = setInterval(upd, 1000); }
-
-  if (daily) showRank(sent, total);
-}
-
-/** "You beat 64% of 120 players". Uses the submit response, or asks the API on a return visit. */
-async function showRank(sent, total) {
-  const res = (await sent) ?? (await getStats(GAME_ID, TODAY, total));
-  const rank = res?.rank;
-  const el = $("#rank");
-  if (!rank || !el || rank.players < 2) return;
-  el.innerHTML = `You beat <b>${rank.betterThan}%</b> of ${rank.players.toLocaleString("en-US")} players today.`;
-  el.hidden = false;
+  startCountdown($("#cd"));
+  if (daily) showRank($("#rank"), sent, GAME_ID, TODAY, total);
 }
 
 /* ---------------- How to play ---------------- */
 function howTo(onClose) {
-  const o = document.createElement("div");
-  o.className = "dg-overlay";
-  o.innerHTML = `<div class="dg-card dg-modal htp" role="dialog" aria-modal="true" aria-labelledby="htp">
-    <h3 id="htp">How to play</h3>
-    <ol>
-      <li>Each round shows two things and a measure: weight, speed, size, age or price.</li>
-      <li>Name something that sits right in the middle. Pick it from the list as you type. You have ${ROUND_SECS} seconds.</li>
-      <li>For weight, speed, size and price, the middle is by ratio, the way you'd eyeball it. Halfway between 1 kg and 100 kg is 10 kg, not 50.
-        <div class="eg">🐭 20 g <span>→</span> 🐕 10 kg ≈ middle <span>→</span> 🐘 6,000 kg</div></li>
-      <li>For age, the middle is the plain average of the two years.</li>
-      <li>Dead center scores 100. Anything outside the two ends scores 0. Five rounds a day, up to 500 points.</li>
-    </ol>
-    <button class="dg-btn" type="button" id="htpClose">Got it</button>
-  </div>`;
-  document.body.appendChild(o);
-  const close = () => { o.remove(); document.removeEventListener("keydown", onKey); onClose?.(); };
-  const onKey = (e) => { if (e.key === "Escape") close(); };
-  o.addEventListener("click", (e) => { if (e.target === o) close(); });
-  o.querySelector("#htpClose").addEventListener("click", close);
-  document.addEventListener("keydown", onKey);
-  o.querySelector("#htpClose").focus();
+  modal({
+    title: "How to play",
+    body: `<ol>
+      <li><b>Two things and a measure.</b> Each round is about weight, speed, size, age or price.</li>
+      <li><b>Name something right in the middle.</b> Pick it from the list as you type. You have ${ROUND_SECS} seconds.</li>
+      <li><b>The middle is by ratio</b> for weight, speed, size and price, the way you'd eyeball it. Halfway between 1 kg and 100 kg is 10 kg, not 50. For age it is the plain average of the two years.</li>
+      <li><b>Dead center scores 100.</b> Anything outside the two ends scores 0. Five rounds a day, up to 500 points.</li>
+    </ol>`,
+    onClose,
+  });
 }
 $("#howBtn").addEventListener("click", () => howTo());
 
