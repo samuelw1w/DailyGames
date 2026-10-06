@@ -35,8 +35,8 @@ export function runNumberGame(g) {
     return `<div class="ng-row ${fb.dir === "exact" ? "hit" : ""}"><b>${esc(g.show(x))}</b><span>${fb.dir === "exact" ? "" : esc(fb.dir)}</span><i>${esc(fb.text)}</i></div>`;
   }).join("");
 
-  function start(mode) {
-    S = { mode, puzzle: mode === "daily" ? g.daily(TODAY) : g.practice(), guesses: [] };
+  function start(mode, guesses = []) {
+    S = { mode, puzzle: mode === "daily" ? g.daily(TODAY) : g.practice(), guesses };
     render();
   }
 
@@ -61,6 +61,7 @@ export function runNumberGame(g) {
       if (value === null) { $("#hint").textContent = "Type a number."; input.focus(); return; }
       S.guesses.push(value);
       const done = g.feedback(puzzle.answer, value).dir === "exact" || S.guesses.length === g.guesses;
+      if (!done && S.mode === "daily") store.saveProgress(TODAY, { guesses: S.guesses });
       done ? finish() : render();
     });
     setTimeout(() => $("#guess")?.focus({ preventScroll: true }), 60);
@@ -101,7 +102,7 @@ export function runNumberGame(g) {
   if (lockScreen(g.gameId, view)) return; // not unlocked: the screen says how to open it
   if (store.getDay(TODAY)?.guesses) showSaved();
   else {
-    start("daily");
+    start("daily", store.progress(TODAY)?.guesses ?? []);
     if (!store.flag("seenHelp")) { store.setFlag("seenHelp"); howTo(); }
   }
 }

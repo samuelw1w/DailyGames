@@ -7,6 +7,7 @@
   <title>Daily Hub</title>
   <meta name="description" content="A few small games a day, played as one series. Add up your points, then lock them in or risk them at the tables.">
   <link rel="stylesheet" href="shared/theme.css">
+  <script src="shared/blinds.js"></script>
   <link rel="stylesheet" href="assets/hub.css">
 </head>
 <body>
@@ -20,13 +21,13 @@
     </header>
 
     <div class="bank">
-      <span><b id="balance">0</b> points to spend</span>
+      <span><b id="balance"></b> points to spend</span>
       <a class="dg-link" href="friends/">Friends</a>
     </div>
 
     <nav class="tabs" role="tablist" aria-label="Ways to play">
-      <button type="button" role="tab" id="tab-series" aria-controls="series" aria-selected="true">The Series</button>
-      <button type="button" role="tab" id="tab-episodes" aria-controls="episodes" aria-selected="false">Episodes</button>
+      <button type="button" role="tab" id="tab-series" aria-controls="panel-series" aria-selected="true">The Series</button>
+      <button type="button" role="tab" id="tab-episodes" aria-controls="panel-episodes" aria-selected="false">Episodes</button>
     </nav>
 
     <nav class="days" id="days" aria-label="Day" hidden>
@@ -35,8 +36,8 @@
       <button type="button" id="next" aria-label="Later day">›</button>
     </nav>
 
-    <main id="series" role="tabpanel" aria-labelledby="tab-series"></main>
-    <main id="episodes" role="tabpanel" aria-labelledby="tab-episodes" hidden></main>
+    <main id="panel-series" role="tabpanel" aria-labelledby="tab-series"></main>
+    <main id="panel-episodes" role="tabpanel" aria-labelledby="tab-episodes" hidden></main>
 
     <div id="ad"></div>
     <p class="dg-foot">Same games for everyone, new ones at midnight. Your scores are saved in this browser.</p>

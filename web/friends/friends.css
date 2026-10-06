@@ -21,7 +21,11 @@ button.who:hover { background: var(--surface-2); }
 .who .rank { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; grid-row: span 2; }
 .who .face { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line-2); display: grid; place-items: center; font-weight: 600; font-size: 14px; grid-row: span 2; }
 .who.you .face { background: var(--text); color: var(--bg); border-color: transparent; }
-.who .name { font-weight: 600; }
+.who .name { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+/* The friend being compared with you below: outlined, with a small label */
+.who .name em { font-style: normal; font-size: 12px; font-weight: 500; color: var(--muted); border: 1px solid var(--line-2); border-radius: 999px; padding: 0 8px; }
+h2.dg-label { display: flex; justify-content: space-between; gap: 12px; }
+h2.dg-label span { letter-spacing: 0; text-transform: none; font-weight: 400; }
 .who .total { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; grid-row: span 2; }
 .who .how { grid-column: 3; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .who.out .total, .who.out .name { color: var(--dim); }

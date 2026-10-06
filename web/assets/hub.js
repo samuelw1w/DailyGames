@@ -6,6 +6,7 @@ import { gameStore } from "../shared/storage.js";
 import { ACTS, ORDER, FINALE, PICKS, seriesState, chooseLineup, lockIn, seriesShare, times, wallet } from "../shared/series.js";
 import { LOCKED, FIRST_DAY, isPlus, isUnlocked, activeDay, dayQuery } from "../shared/account.js";
 import { wireShare, adSlot } from "../shared/ui.js";
+import { RollingNumber } from "../shared/rolling-number.js";
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const $ = (id) => document.getElementById(id);
@@ -29,7 +30,20 @@ while (played.has(dayKey(d))) { streak++; d.setDate(d.getDate() - 1); }
 const dateText = parseDayKey(day).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 $("title").textContent = past ? dateText : "Today";
 $("today").textContent = `${past ? "An earlier day" : dateText} · No. ${NUMBER}${streak ? ` · ${streak}-day streak` : ""}`;
-$("balance").textContent = fmt(wallet().balance);
+
+// The day's score and the points to spend roll from what this browser last showed to what they
+// are now, so coming back from a game (or Risk) shows the new points landing.
+const hub = gameStore("hub");
+const seen = hub.flag("seen") ?? {};
+let shownScore = seen.day === day ? seen.score : 0;
+const remember = () => hub.setFlag("seen", { day, score: shownScore, balance: wallet().balance });
+const roll = (el, from, to) => {
+  const n = new RollingNumber(el, { value: from, locale: "en-US" });
+  if (from !== to) setTimeout(() => n.set(to), 350);
+  return n;
+};
+const balance = roll($("balance"), seen.balance ?? 0, wallet().balance);
+const updateBalance = () => { balance.set(wallet().balance); remember(); };
 if (isPlus()) $("plusBtn").classList.add("on"); // members get a quieter button
 $("ad").innerHTML = adSlot("");
 
@@ -127,9 +141,9 @@ function renderSeries() {
   }
 
   const shown = final ? final.total : s.total;
-  $("series").innerHTML = `
+  $("panel-series").innerHTML = `
     <div class="score">
-      <b class="${started ? "" : "dim"}">${fmt(shown)}</b>
+      <b class="${started ? "" : "dim"}" id="score"></b>
       <span>${final ? (past ? "that day's score" : "today's score") : `of ${fmt(s.max)}`}</span>
       ${final?.house ? `<span class="how"><b>${fmt(final.base)}</b> points, ${final.total === 0 ? "lost at the tables" : `<b>${times(final.total / final.base)}</b> at the tables`}</span>` : ""}
     </div>
@@ -137,8 +151,12 @@ function renderSeries() {
     <div class="steps">${s.acts.map(act).join("")}${risk}</div>
     ${action}`;
 
+  roll($("score"), shownScore, shown);
+  shownScore = shown;
+  remember();
+
   document.querySelectorAll("[data-pick]").forEach((b) => b.addEventListener("click", () => openPicker(b.dataset.pick)));
-  $("lockBtn")?.addEventListener("click", () => { lockIn(day); $("balance").textContent = fmt(wallet().balance); renderSeries(); });
+  $("lockBtn")?.addEventListener("click", () => { lockIn(day); updateBalance(); renderSeries(); });
   if ($("shareBtn")) wireShare($("shareBtn"), () => seriesShare(NUMBER, seriesState(day)));
   const cd = $("cd");
   if (cd) { const tick = () => (cd.textContent = formatCountdown(msUntilMidnight())); tick(); setInterval(tick, 1000); }
@@ -158,7 +176,7 @@ function renderEpisodes() {
       <span class="dot"></span><b>${esc(g.name)}</b><span class="status">${result ? `${points} points${counts ? "" : " · for fun"}` : counts ? "Play" : s.lineup ? "Play for fun" : "Play"}</span></a>`;
   };
   const anyLocked = ORDER.some((id) => !isUnlocked(id));
-  $("episodes").innerHTML = CATEGORIES.map((category) => {
+  $("panel-episodes").innerHTML = CATEGORIES.map((category) => {
     const act = ACTS.find((a) => a.name === category);
     return `<section class="section"><h2 class="dg-label">${esc(category)}</h2><div class="games">${act.games.map((id) => card(game(id))).join("")}</div></section>`;
   }).join("") + `<p class="note">The games in ${past ? "that day's" : "today's"} series count for points wherever you play them; the rest are just for fun.${anyLocked ? " Locked games open for good with points, or all at once with Plus." : ""}</p>`;
@@ -166,9 +184,11 @@ function renderEpisodes() {
 
 /* ---------------- Tabs ---------------- */
 
+// The panels' ids differ from the "#episodes" in the address on purpose: a matching id would
+// make the browser jump down to the panel whenever the page loads (switching days, say).
 function show(tab) {
   for (const name of ["series", "episodes"]) {
-    $(name).hidden = name !== tab;
+    $(`panel-${name}`).hidden = name !== tab;
     $(`tab-${name}`).setAttribute("aria-selected", String(name === tab));
   }
   history.replaceState(null, "", `${location.pathname}${location.search}${tab === "episodes" ? "#episodes" : ""}`);

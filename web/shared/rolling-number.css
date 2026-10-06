@@ -1,0 +1,34 @@
+/* RollingNumber styles — size it with font-size on the element. */
+.rn {
+  /* distance between digits on the strip; > 1em hides neighbours at rest */
+  --rn-step: 1.35em;
+  display: inline-flex;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  /* room above and below for the neighbouring digits to peek through */
+  padding-block: 0.18em;
+  overflow: hidden;
+  /* fade digits out as they roll past the top and bottom edges */
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 0.24em, #000 calc(100% - 0.24em), transparent);
+          mask-image: linear-gradient(to bottom, transparent, #000 0.24em, #000 calc(100% - 0.24em), transparent);
+  white-space: nowrap;
+}
+.rn-slot {
+  position: relative;
+  display: inline-block;
+  height: 1em;
+  overflow: visible;
+}
+.rn-strip {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--rn-step) - 1em);
+  will-change: transform;
+}
+.rn-strip > span {
+  display: block;
+  height: 1em;
+  line-height: 1;
+  text-align: center;
+}
+.rn-symbol { line-height: 1; }

@@ -6,6 +6,10 @@ import { gameStore } from "./storage.js";
 import { GAMES } from "./registry.js";
 import { seriesState, pointsFor, wallet, FINALE } from "./series.js";
 import { LOCKED, isPlus, isUnlocked, unlockGame, dayQuery, activeDay } from "./account.js";
+import { ScoreRing } from "./score-ring.js";
+
+// Page transitions (shared/blinds.js) close in the colour of the game being opened.
+globalThis.dgBlinds?.setGameColors(Object.fromEntries(GAMES.map((g) => [g.id, g.accent])));
 
 export const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
@@ -109,10 +113,26 @@ export function seriesButton(day) {
   return `<a class="dg-btn" href="../../${dayQuery(day)}">${s.complete && !s.final ? "Finish the day" : "Back to the hub"}</a>`;
 }
 
-/** "+82 points" for a game's daily result, or a note that the game isn't in the day's lineup. */
-export const pointsLine = (gameId, result) => (seriesState(activeDay()).open.includes(gameId)
-  ? `<p class="dg-points">+${pointsFor(gameId, result)} <span>of 100 points</span></p>`
-  : `<p>Played for fun: it isn't one of the games in this day's series.</p>`);
+/**
+ * The game's score out of 100 as a ring in its colour, which fills in once it is on the page.
+ * For a daily result it also says whether those points count toward the day's series;
+ * practice games leave that line to the game.
+ */
+export function pointsLine(gameId, result, daily = true) {
+  const ring = `<div class="dg-ring" data-points="${pointsFor(gameId, result) ?? 0}"></div>`;
+  if (!daily) return ring;
+  return ring + (seriesState(activeDay()).open.includes(gameId)
+    ? `<p class="dg-points">Points toward the day's series</p>`
+    : `<p>Played for fun: it isn't one of the games in this day's series.</p>`);
+}
+
+// Rings fill in as soon as a result screen puts them on the page, a beat after it slides in.
+new MutationObserver(() => {
+  document.querySelectorAll(".dg-ring:not(.score-ring)").forEach((el) => {
+    const ring = new ScoreRing(el);
+    setTimeout(() => ring.play(+el.dataset.points), 250);
+  });
+}).observe(document.body, { childList: true, subtree: true });
 
 /**
  * The standard result screen, used by the simpler games. Draws the verdict, the points, an
@@ -123,12 +143,14 @@ export const pointsLine = (gameId, result) => (seriesState(activeDay()).open.inc
 export function resultScreen(view, o) {
   const st = gameStore(o.gameId).stats();
   const hasToday = !!gameStore(o.gameId).getDay(o.day);
+  // A score out of 100 is what the ring shows, so it isn't repeated above the title.
   view.innerHTML = `
   <section class="dg-summary dg-enter">
     <div class="dg-verdict">
-      <span class="big">${o.big}</span><span>${o.unit}</span>
+      ${o.unit === "of 100" ? "" : `<span class="big">${o.big}</span><span>${o.unit}</span>`}
       <h2>${esc(o.title)}</h2>
-      ${o.daily ? pointsLine(o.gameId, o.result) : "<p>Practice games don't count toward your day.</p>"}
+      ${pointsLine(o.gameId, o.result, o.daily)}
+      ${o.daily ? "" : "<p>Practice games don't count toward your day.</p>"}
     </div>
     ${o.body ?? ""}
     <p class="dg-rank" id="rank" hidden></p>

@@ -1,5 +1,5 @@
 // Pins UI: drawing, the two taps, the game loop. Physics and rules live in core/.
-import { GAME_ID, FRAMES, MAX_SCORE, ASSIST_MARK, createGame, applyRoll, scoreGame, shareText } from "./core/puzzle.js";
+import { GAME_ID, FRAMES, MAX_SCORE, ASSIST_MARK, createGame, applyRoll, playBall, scoreGame, shareText } from "./core/puzzle.js";
 import {
   WORLD, LANE, TICKS_PER_SEC, BALL_R, PIN_R, SPOTS,
   dailyLane, ballLane, posAt, hookStart, aimPoint, createShot, stepShot, downed,
@@ -23,6 +23,8 @@ const AIM_TICKS = 34;  // how far ahead the dashed aim line shows the ball's pat
 const TRAIL = 26;      // ticks of fading trail behind the ball
 const VIEW = { x: 75, w: 330 }; // the slice of the world that is drawn: the lane and its gutters
 const REST = 55;       // ticks the fallen pins stay on screen before the next ball
+const GLIDE = 0.16;    // share of the way to the gutter the drawn ball covers each tick
+const SINK = 14;       // ticks the ball takes to settle into the gutter
 
 const $ = (s) => document.querySelector(s);
 const view = $("#view");
@@ -34,7 +36,9 @@ const hex = (name) => css.getPropertyValue(name).trim();
 const rgba = (h, a) => `rgba(${parseInt(h.slice(1, 3), 16)}, ${parseInt(h.slice(3, 5), 16)}, ${parseInt(h.slice(5, 7), 16)}, ${a})`;
 const C = { accent: hex("--accent"), text: hex("--text"), edge: hex("--dim") };
 
-// The game in progress: { mode, lane, game, phase, i, j, pos, shot, trail, prev, balls, ... }.
+// The game in progress: { mode, lane, game, phase, i, j, pos, shot, trail, prev, at, balls, ... }.
+// `at` is where the ball is drawn: the same as the physics, except that the physics drops a
+// ball into the gutter in one tick and the drawing lets it slide in over a few.
 // `phase` is "pos" (first tap pending), "hook" (second tap pending), "roll" or "rest".
 let S = null;
 let raf = 0, last = 0, acc = 0;
@@ -73,7 +77,7 @@ function draw(canvas, a) {
   });
 
   if (S.phase === "rest") return;
-  const ball = shot ? [S.prev[0] + (shot.ball.x - S.prev[0]) * a, S.prev[1] + (shot.ball.y - S.prev[1]) * a] : [posAt(S.lane, S.phase === "pos" ? S.i : S.pos), LANE.foul];
+  const ball = shot ? [S.prev[0] + (S.at[0] - S.prev[0]) * a, S.prev[1] + (S.at[1] - S.prev[1]) * a] : [posAt(S.lane, S.phase === "pos" ? S.i : S.pos), LANE.foul];
   if (shot && ball[1] < -BALL_R) return;
 
   if (S.phase === "hook") {
@@ -93,16 +97,26 @@ function draw(canvas, a) {
     ctx.lineWidth = px(2 + f * 8);
     ctx.beginPath(); ctx.moveTo(trail[n - 1][0], trail[n - 1][1]); ctx.lineTo(trail[n][0], trail[n][1]); ctx.stroke();
   }
+  // A ball in the gutter sits a little lower, so it's drawn a little smaller.
+  const sink = shot?.gutter ? Math.min(1, (S.sunk + a) / SINK) : 0;
   ctx.fillStyle = C.accent;
-  ctx.beginPath(); ctx.arc(ball[0], ball[1], BALL_R, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(ball[0], ball[1], BALL_R * (1 - 0.18 * sink * (2 - sink)), 0, 7); ctx.fill();
 }
 
 /* ---------------- Game flow ---------------- */
 
-function startGame(mode) {
+function startGame(mode, saved = null) {
   stopLoop();
   const day = mode === "daily" ? dailyLane(TODAY) : { seed: Math.floor(Math.random() * 2 ** 31) };
-  S = { mode, day, game: createGame(), balls: [], assistUsed: false, over: false };
+  S = { mode, day, game: createGame(), balls: [], assistUsed: !!saved?.assistUsed, over: false };
+  // Picking up a game left part way: bowl the saved balls again, instantly. A ball that was
+  // still rolling when the page closed counts as thrown.
+  for (const [pos, hook] of saved?.balls ?? []) {
+    if (S.game.done) break;
+    playBall(ballLane(day, S.balls.length), S.game, pos, hook);
+    S.balls.push([pos, hook]);
+  }
+  if (S.game.done) return finish();
   $("#sub").textContent = mode === "daily" ? "Three frames. No two balls roll alike" : "Practice game";
   view.innerHTML = `
     <div class="dg-zone" id="zone" role="button" tabindex="0" aria-label="Bowl">
@@ -181,17 +195,24 @@ function tick() {
       S.shot = createShot(lane, game.standing, S.pos, S.j);
       S.balls.push([S.pos, S.j]);
       if (assist) S.assistUsed = true;
+      if (S.mode === "daily") store.saveProgress(TODAY, { balls: S.balls, assistUsed: S.assistUsed });
       S.prev = [S.shot.ball.x, S.shot.ball.y];
+      S.at = S.prev;
+      S.sunk = 0;
       S.phase = "roll";
       S.note = "";
       renderHud();
     } else S.j = (S.j + 1) % lane.hookPeriod;
   } else if (S.phase === "roll") {
     const { shot } = S;
-    S.prev = [shot.ball.x, shot.ball.y];
+    S.prev = S.at;
     S.trail.push(S.prev);
     if (S.trail.length > TRAIL) S.trail.shift();
     stepShot(shot);
+    // Into the gutter: ease sideways toward it instead of jumping.
+    const x = shot.gutter ? S.at[0] + (shot.ball.x - S.at[0]) * GLIDE : shot.ball.x;
+    S.at = [x, shot.ball.y];
+    if (shot.gutter) S.sunk++;
     if (shot.done) land();
   } else if (--S.rest <= 0) {
     if (game.done) finish();
@@ -257,7 +278,7 @@ function showSummary(mode, result, sent = null) {
     <div class="dg-verdict">
       <span class="big">${total}</span><span>of ${MAX_SCORE}</span>
       <h2>${title}</h2>
-      ${daily ? pointsLine(GAME_ID, result) : ""}
+      ${pointsLine(GAME_ID, result, daily)}
       ${result.assist ? `<p>${ASSIST_MARK} Played in slow motion.</p>` : ""}
     </div>
     <div class="frames">${framesHtml(rolls)}</div>
@@ -321,7 +342,7 @@ $("#howBtn").addEventListener("click", howTo);
 if (!lockScreen(GAME_ID, view)) {
   if (store.getDay(TODAY)?.balls) showSaved();
   else {
-    startGame("daily");
+    startGame("daily", store.progress(TODAY));
     if (!store.flag("seenHelp")) {
       store.setFlag("seenHelp");
       howTo();

@@ -121,15 +121,17 @@ function drawScene(canvas, scene) {
 
 /* ---------------- Game flow ---------------- */
 
-function startGame(mode) {
+function startGame(mode, saved = null) {
   stopLoop();
   const level = mode === "daily" ? dailyLevel(TODAY) : practiceLevel(TODAY);
-  const run = createRun(level);
+  const { run, taps, paths } = resumeRun(level, saved?.taps ?? []);
   S = {
     mode, level, run,
-    taps: [], paths: [], live: null, trail: [], prev: [run.x, run.y], fx: [],
-    tapQueued: false, assistUsed: false, over: false, note: "Space bar on desktop",
+    taps, paths, live: null, trail: [], prev: [run.x, run.y], fx: [],
+    tapQueued: false, assistUsed: !!saved?.assistUsed, over: false, note: "Space bar on desktop",
   };
+  if (taps.length) { const left = MAX_JUMPS - run.jumps; S.note = `${left} ${left === 1 ? "jump" : "jumps"} left`; }
+  if (run.done) return finish();
   $("#sub").textContent = mode === "daily" ? "Reach the goal in five jumps" : "Practice level";
   view.innerHTML = `
     <div class="dg-zone" id="zone" role="button" tabindex="0" aria-label="Launch the ship">
@@ -211,6 +213,7 @@ function tick(now) {
   if (event === "launch") {
     S.taps.push(run.tick);
     if (assist) S.assistUsed = true;
+    if (S.mode === "daily") store.saveProgress(TODAY, { taps: S.taps, assistUsed: S.assistUsed });
     S.live = { pts: [before], outcome: null };
     S.paths.push(S.live);
     S.note = "";
@@ -266,6 +269,28 @@ function finish() {
   setTimeout(() => showSummary(mode, level, result, paths, sent), won ? 1300 : 1000);
 }
 
+/**
+ * Fly the saved launches again, instantly, to pick up a run left part way. A jump still in
+ * flight when the page closed is flown to the end. Returns the run back in orbit (or over),
+ * the launches that were used, and the paths flown.
+ */
+function resumeRun(level, saved) {
+  const run = createRun(level), taps = [], paths = [];
+  let live = null;
+  while (!run.done && (taps.length < saved.length || run.at < 0)) {
+    const next = saved[taps.length];
+    if (run.at >= 0 && !(next > run.tick)) break; // a launch that can't be replayed: stop here
+    const tap = run.at >= 0 && next === run.tick + 1;
+    if (tap) taps.push(next);
+    const before = [run.x, run.y];
+    const event = step(level, run, tap);
+    if (event === "launch") { live = { pts: [before], outcome: null }; paths.push(live); }
+    else if (live && event !== "miss") live.pts.push([run.x, run.y]);
+    if (live && event && event !== "launch") { live.outcome = event; live = null; }
+  }
+  return { run, taps, paths };
+}
+
 /* ---------------- Result ---------------- */
 
 /** Rebuild the flown paths from saved taps, for the result picture on a return visit. */
@@ -307,7 +332,7 @@ function showSummary(mode, level, result, paths, sent = null) {
     <div class="dg-verdict">
       ${won ? `<span class="big">${jumps}</span><span>${jumps === 1 ? "jump" : "jumps"} of ${MAX_JUMPS}</span>` : `<span class="big lost">Lost in space</span>`}
       <h2>${title}</h2>
-      ${daily ? pointsLine(GAME_ID, result) : ""}
+      ${pointsLine(GAME_ID, result, daily)}
       ${result.assist ? `<p>${ASSIST_MARK} Played in slow motion.</p>` : ""}
     </div>
     <canvas class="dg-stage map" id="map" role="img" aria-label="Your flight path"></canvas>
@@ -383,7 +408,7 @@ $("#howBtn").addEventListener("click", howTo);
 if (!lockScreen(GAME_ID, view)) {
   if (store.getDay(TODAY)?.taps) showSaved();
   else {
-    startGame("daily");
+    startGame("daily", store.progress(TODAY));
     if (!store.flag("seenHelp")) {
       store.setFlag("seenHelp");
       howTo();

@@ -1,7 +1,7 @@
 // Skip UI: drawing, the tap, the game loop. Rules live in core/sim.js.
 import {
   GAME_ID, TICKS_PER_SEC, STONES, MAX_SKIPS, FIRST_TOUCH, ASSIST_MARK,
-  dailyWater, makeWater, touches, windowAt, catches, bestOf, resultLabel, shareText,
+  dailyWater, makeWater, touches, windowAt, catches, countSkips, bestOf, resultLabel, shareText,
 } from "./core/sim.js";
 import { puzzleNumber } from "../../shared/daily.js";
 import { gameStore, clientId } from "../../shared/storage.js";
@@ -109,10 +109,13 @@ function draw(canvas, a) {
 
 /* ---------------- Game flow ---------------- */
 
-function startGame(mode) {
+function startGame(mode, saved = null) {
   stopLoop();
   const water = mode === "daily" ? dailyWater(TODAY) : makeWater(Math.random);
-  S = { mode, water, counts: [], throws: [], assistUsed: false, over: false };
+  // Picking up a day left part way: recount the stones already thrown from their taps.
+  const throws = (saved?.throws ?? []).slice(0, STONES);
+  S = { mode, water, counts: throws.map((taps, stone) => countSkips(water, stone, taps)), throws, assistUsed: !!saved?.assistUsed, over: false };
+  if (throws.length === STONES) return finish();
   $("#sub").textContent = mode === "daily" ? "Three stones. Best one counts" : "Practice water";
   view.innerHTML = `
     <div class="dg-zone" id="zone" role="button" tabindex="0" aria-label="Throw, then tap each time the stone touches the water">
@@ -181,7 +184,7 @@ function tick() {
   const tapped = S.tapQueued;
   S.tapQueued = false;
   if (S.phase === "ready") {
-    if (tapped) { S.phase = "fly"; if (assist) S.assistUsed = true; renderHud(); }
+    if (tapped) { S.phase = "fly"; S.throws.push(S.taps); if (assist) S.assistUsed = true; save(); renderHud(); }
     return;
   }
   S.t++;
@@ -199,6 +202,7 @@ function tick() {
   }
   if (tapped && !S.failed) {
     S.taps.push(S.t);
+    save();
     if (catches(ticks, S.n, S.t)) { S.n++; renderHud(); }
     else S.failed = true; // tapped at the wrong moment: it goes under at the next touch
   }
@@ -209,12 +213,14 @@ function tick() {
 /** This stone is done: record it and let the ripples fade. */
 function land() {
   S.counts.push(S.n);
-  S.throws.push(S.taps);
   S.phase = "rest";
   S.rest = REST;
   if (S.n === MAX_SKIPS) confetti(160);
   renderHud();
 }
+
+/** Keep every stone's taps, so leaving the page carries on with the next stone. */
+const save = () => S.mode === "daily" && store.saveProgress(TODAY, { throws: S.throws, assistUsed: S.assistUsed });
 
 function finish() {
   const { mode, counts } = S;
@@ -257,7 +263,7 @@ function showSummary(mode, result, sent = null) {
     <div class="dg-verdict">
       <span class="big">${total}</span><span>${total === 1 ? "skip" : "skips"}</span>
       <h2>${title}</h2>
-      ${daily ? pointsLine(GAME_ID, result) : ""}
+      ${pointsLine(GAME_ID, result, daily)}
       <p>Your stones: ${counts.join(" · ")}</p>
       ${result.assist ? `<p>${ASSIST_MARK} Played in slow motion.</p>` : ""}
     </div>
@@ -320,7 +326,7 @@ $("#howBtn").addEventListener("click", howTo);
 if (!lockScreen(GAME_ID, view)) {
   if (store.getDay(TODAY)?.throws) showSaved();
   else {
-    startGame("daily");
+    startGame("daily", store.progress(TODAY));
     if (!store.flag("seenHelp")) {
       store.setFlag("seenHelp");
       howTo();

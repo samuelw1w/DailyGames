@@ -37,6 +37,7 @@ export function gameStore(gameId) {
     getDay: (day = dayKey()) => read(k(`day.${day}`)),
     saveDay(day, result, score) {
       write(k(`day.${day}`), result);
+      if (read(k("progress"))?.day === day) write(k("progress"), null); // that day is finished: nothing left to pick up
       const h = read(k("history")) || {};
       h[day] = score;
       write(k("history"), h);
@@ -56,5 +57,10 @@ export function gameStore(gameId) {
     },
     flag: (name) => read(k(`flag.${name}`)),
     setFlag: (name, v = true) => write(k(`flag.${name}`), v),
+    // A daily game left part way through: what it needs to carry on from the same place, so
+    // leaving the page (or the phone closing it) never restarts the day. One per game.
+    progress: (day = dayKey()) => { const p = read(k("progress")); return p?.day === day ? p : null; },
+    saveProgress: (day, data) => write(k("progress"), { ...data, day }),
+    clearProgress: () => write(k("progress"), null),
   };
 }
