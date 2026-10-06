@@ -332,7 +332,7 @@ function showSummary(mode, level, result, paths, sent = null) {
     <div class="dg-verdict">
       ${won ? `<span class="big">${jumps}</span><span>${jumps === 1 ? "jump" : "jumps"} of ${MAX_JUMPS}</span>` : `<span class="big lost">Lost in space</span>`}
       <h2>${title}</h2>
-      ${daily ? pointsLine(GAME_ID, result) : ""}
+      ${pointsLine(GAME_ID, result, daily)}
       ${result.assist ? `<p>${ASSIST_MARK} Played in slow motion.</p>` : ""}
     </div>
     <canvas class="dg-stage map" id="map" role="img" aria-label="Your flight path"></canvas>

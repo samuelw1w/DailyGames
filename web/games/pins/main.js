@@ -278,7 +278,7 @@ function showSummary(mode, result, sent = null) {
     <div class="dg-verdict">
       <span class="big">${total}</span><span>of ${MAX_SCORE}</span>
       <h2>${title}</h2>
-      ${daily ? pointsLine(GAME_ID, result) : ""}
+      ${pointsLine(GAME_ID, result, daily)}
       ${result.assist ? `<p>${ASSIST_MARK} Played in slow motion.</p>` : ""}
     </div>
     <div class="frames">${framesHtml(rolls)}</div>

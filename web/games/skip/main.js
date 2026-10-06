@@ -263,7 +263,7 @@ function showSummary(mode, result, sent = null) {
     <div class="dg-verdict">
       <span class="big">${total}</span><span>${total === 1 ? "skip" : "skips"}</span>
       <h2>${title}</h2>
-      ${daily ? pointsLine(GAME_ID, result) : ""}
+      ${pointsLine(GAME_ID, result, daily)}
       <p>Your stones: ${counts.join(" · ")}</p>
       ${result.assist ? `<p>${ASSIST_MARK} Played in slow motion.</p>` : ""}
     </div>

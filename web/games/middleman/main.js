@@ -325,7 +325,7 @@ function showSummary(mode, rows, total, sent = null) {
     <div class="dg-verdict">
       <span class="big" id="tot">0</span><span>of 500</span>
       <h2>${title}</h2>
-      ${daily ? pointsLine(GAME_ID, { total }) : ""}
+      ${pointsLine(GAME_ID, { total }, daily)}
       ${daily ? "" : "<p>Practice games don't count toward your streak.</p>"}
     </div>
     <p class="dg-rank" id="rank" hidden></p>

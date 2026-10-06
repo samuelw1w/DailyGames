@@ -3,6 +3,8 @@
    secondary text, and one accent color per game. No drop shadows, no outlines, lots of space.
    A game sets --accent (and --tint to wash the page with it); everything else comes from here. */
 @import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap");
+@import url("rolling-number.css");
+@import url("score-ring.css");
 
 :root {
   --bg: #0b0b0c; --surface: #161617; --surface-2: #202022; --line: #29292c; --line-2: #3a3a3f;
@@ -90,8 +92,12 @@ a { color: inherit; }
 .dg-verdict .big.lost { color: var(--muted); font-size: 34px; letter-spacing: -0.02em; line-height: 1.3; }
 .dg-verdict h2 { margin: 6px 0 0; font-size: 20px; font-weight: 600; }
 .dg-verdict p, .dg-verdict span { margin: 0; color: var(--muted); }
-.dg-points { margin: 6px 0 0 !important; color: var(--accent) !important; font-weight: 600; font-variant-numeric: tabular-nums; }
-.dg-points span { color: var(--muted); font-weight: 400; }
+.dg-points { margin: 6px 0 0 !important; color: var(--muted); font-size: 14px; }
+/* The game's 0-100 score as a ring in its own colour (shared/score-ring.js). It leads the verdict,
+   and the game's own score (strokes, skips, jumps...) steps down to a line beneath it. */
+.dg-ring { order: -1; width: 148px; margin-bottom: 14px; --ring-color: var(--accent); --ring-track: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+.dg-ring .score-ring-value { font-weight: 600; color: var(--ring-color); }
+.dg-verdict:has(.dg-ring) .big { font-size: 30px; letter-spacing: -0.02em; line-height: 1.2; }
 .dg-rank { margin: 0; text-align: center; color: var(--muted); }
 .dg-rank b { color: var(--text); font-weight: 600; }
 .dg-actions { display: flex; flex-direction: column; gap: 10px; }

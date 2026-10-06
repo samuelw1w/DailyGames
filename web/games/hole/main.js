@@ -378,7 +378,7 @@ function showSummary(mode, course, result, trails, sent = null) {
   <section class="dg-summary dg-enter">
     <div class="dg-verdict">
       <span class="big ${diff > 0 ? "lost" : ""}">${scoreName(strokes, par)}</span><span>${strokes} ${strokes === 1 ? "stroke" : "strokes"}, par ${par}${result.holed ? "" : " (picked up)"}</span>
-      ${daily ? pointsLine(GAME_ID, result) : ""}
+      ${pointsLine(GAME_ID, result, daily)}
       ${result.assist ? `<p>${ASSIST_MARK} Played in slow motion.</p>` : ""}
     </div>
     <canvas class="dg-stage" id="card" role="img" aria-label="Your shots on the hole"></canvas>
