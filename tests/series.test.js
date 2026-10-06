@@ -15,10 +15,10 @@ import { dailyRounds } from "../web/games/middleman/core/puzzle.js";
 const dayAfter = (start, n) => { const d = new Date(`${start}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const DAYS = Array.from({ length: 365 }, (_, i) => dayAfter("2026-10-05", i));
 
-test("the series is two acts of five, every game is registered, and the day is out of 1,000", () => {
+test("two acts of five games to pick three from, every game registered, and the day out of 600", () => {
   assert.deepEqual(ACTS.map((a) => a.games.length), [5, 5]);
   assert.equal(new Set(ORDER).size, 10);
-  assert.equal(DAY_POINTS, 1000);
+  assert.equal(DAY_POINTS, 600);
   for (const id of [...ORDER, "house"]) {
     assert.ok(REGISTRY.some((g) => g.id === id), `${id} is in the registry`);
     assert.ok(API.has(id), `${id} has a server module`);

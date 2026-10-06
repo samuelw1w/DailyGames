@@ -5,7 +5,7 @@ import { msUntilMidnight, formatCountdown } from "./daily.js";
 import { gameStore } from "./storage.js";
 import { GAMES } from "./registry.js";
 import { seriesState, pointsFor, wallet, FINALE } from "./series.js";
-import { LOCKED, isPlus, isUnlocked, unlockGame, dayQuery } from "./account.js";
+import { LOCKED, isPlus, isUnlocked, unlockGame, dayQuery, activeDay } from "./account.js";
 
 export const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
@@ -101,16 +101,18 @@ const nameOf = (id) => GAMES.find((g) => g.id === id)?.name ?? id;
 
 /**
  * The button that carries a player on through the day: the next unplayed game, or back to
- * the hub once all ten are done. Goes first on every daily result screen.
+ * the hub once the day's lineup is done (or still has to be chosen). Goes first on every daily result screen.
  */
 export function seriesButton(day) {
   const s = seriesState(day);
   if (s.next) return `<a class="dg-btn" href="${gameHref(s.next)}${dayQuery(day)}">Next: ${esc(nameOf(s.next))}</a>`;
-  return `<a class="dg-btn" href="../../${dayQuery(day)}">${s.final ? "Back to the hub" : "Finish the day"}</a>`;
+  return `<a class="dg-btn" href="../../${dayQuery(day)}">${s.complete && !s.final ? "Finish the day" : "Back to the hub"}</a>`;
 }
 
-/** "+82 points" for a game's daily result. */
-export const pointsLine = (gameId, result) => `<p class="dg-points">+${pointsFor(gameId, result)} <span>of 100 points</span></p>`;
+/** "+82 points" for a game's daily result, or a note that the game isn't in the day's lineup. */
+export const pointsLine = (gameId, result) => (seriesState(activeDay()).open.includes(gameId)
+  ? `<p class="dg-points">+${pointsFor(gameId, result)} <span>of 100 points</span></p>`
+  : `<p>Played for fun: it isn't one of the games in this day's series.</p>`);
 
 /**
  * The standard result screen, used by the simpler games. Draws the verdict, the points, an

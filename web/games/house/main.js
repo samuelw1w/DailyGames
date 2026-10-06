@@ -373,12 +373,12 @@ function resume(run) {
   renderPicker();
 }
 
-// Risk is the finale of the Series: the door opens once all ten games are played, and closes
+// Risk is the finale of the Series: the door opens once the day's games are played, and closes
 // for good once the day's score is locked in or the tables have been played.
 const series = seriesState(TODAY);
 if (savedDay()) showSummary("daily", savedDay());
 else if (series.final) closed(series.final.total.toLocaleString("en-US"), "You locked in today's score, so the tables are closed until tomorrow.");
-else if (!series.complete) closed(`${series.played} of 10`, "Risk opens when you've played all ten of today's games.");
+else if (!series.complete) closed(series.needsPick ? "Not yet" : `${series.played} of ${series.open.length}`, "Risk opens when you've played all of today's series.");
 else if (series.total === 0) { lockIn(TODAY); closed("0", "No points today, so there's nothing to risk."); }
 else {
   startGame("daily", series.total);

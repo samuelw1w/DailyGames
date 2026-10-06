@@ -33,8 +33,10 @@ const MULTIPLES = [0.4, 0.6, 0.8, 0.8, 1, 1.2, 1.2, 1.4, 1.6, 2]; // Risk moves 
 function friendDay(friend, day) {
   const rng = mulberry32(hash(`friend:${friend.name}:${day}`));
   if (rng() < 0.12) return null;
-  const points = Object.fromEntries(ORDER.map((id) => [id, Math.max(0, Math.min(100, Math.round(100 * (friend.skill + (rng() - 0.5) * 0.75))))]));
-  const base = ORDER.reduce((sum, id) => sum + points[id], 0);
+  // Like everyone, a friend plays three games from each act: here, a different three each day.
+  const lineup = ACTS.flatMap((act) => [...act.games].sort(() => rng() - 0.5).slice(0, 3));
+  const points = Object.fromEntries(ORDER.map((id) => [id, lineup.includes(id) ? Math.max(0, Math.min(100, Math.round(100 * (friend.skill + (rng() - 0.5) * 0.75)))) : null]));
+  const base = lineup.reduce((sum, id) => sum + points[id], 0);
   const risked = rng() < friend.risk;
   const total = risked ? Math.round(base * MULTIPLES[Math.floor(rng() * MULTIPLES.length)]) : base;
   return { points, base, total, risked, done: true };

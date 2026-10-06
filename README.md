@@ -4,18 +4,18 @@ A hub of small daily puzzle games. Everyone gets the same puzzles each day, and 
 
 ## The Series
 
-Every day is one series of ten games, played in order:
+Every day is one series: you pick up to three games from each act and play them in order.
 
-1. **Play**: five games of timing (Orbit, Pins, Skip, Hole, Stop).
-2. **Know**: five games of knowing (Middleman, Year, Close, Jot, Link).
+1. **Play**: three of five games of timing (Orbit, Pins, Skip, Hole, Stop).
+2. **Know**: three of five games of knowing (Middleman, Year, Close, Jot, Link).
 3. **Risk**: optional. Lock in your points, or risk them at the casino tables. You start at 1.0× and play up to five win-or-lose hands at any tables you like: each win adds 0.2×, each loss takes 0.2× away, and you can stop after any hand. So the day ends somewhere between nothing and double.
 
-Every game is worth up to 100 points. Three games in each act are free; the other two (Skip, Hole, Close and Link) start locked, so a new player's day is six games and out of 600 before Risk. The hub's **Episodes** tab lists the games on their own; a game played there counts toward the day's series just the same. The order of the games and how each result becomes points live in [`web/shared/series.js`](web/shared/series.js).
+Every game is worth up to 100 points, so a full day is six games and out of 600 before Risk, for everyone. Three games in each act are free; the other two (Skip, Hole, Close and Link) start locked. A player with only the free games has nothing to choose, so the series simply starts; once they have unlocked more (with points or Plus), the hub asks which three from each act they want that day. The hub's **Episodes** tab lists every game on its own: games in the day's lineup count for points wherever they're played, the rest are just for fun. The acts, the lineup and how each result becomes points live in [`web/shared/series.js`](web/shared/series.js).
 
 ### Points, unlocking and Plus
 - **Points.** A finished day's score is banked. The total is shown at the top of the hub as points to spend, and it is what friends see as your all-time score.
 - **Unlocking.** A locked game costs 20,000 points and stays open for good. Spending lowers the balance, never the all-time total.
-- **Plus.** The Subscribe button leads to `web/plus/`. Plus opens every game (and any added later), removes the ad slots, and lets earlier days be played from a day stepper on the hub.
+- **Plus.** The Plus button at the top of the hub leads to `web/plus/`. Plus opens every game (and any added later), removes the ad slots, and lets earlier days be played from a day stepper on the hub.
 
 **Plus is a preview, not a product yet.** There are no accounts and no payments: `web/shared/account.js` keeps a Plus switch, the unlocked games and nothing else in the browser's storage, the price on the page is a placeholder, and the "ads" are empty slots. Anyone can turn Plus on for free. All of that needs a server before it can be sold.
 

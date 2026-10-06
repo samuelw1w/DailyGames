@@ -1,4 +1,5 @@
-// The Series: the day's ten games played in order as two acts, then an optional trip to
+// The Series: each day a player picks up to three games from each of two acts, plays them
+// in order, then may take an optional trip to
 // Risk (the casino tables). Every game is worth up to 100 points, so each act is out of 500 and the day
 // out of 1,000. This file is the one place that knows the order and how results become points.
 import { gameStore } from "./storage.js";
@@ -12,7 +13,8 @@ export const ACTS = [
 ];
 export const ORDER = ACTS.flatMap((a) => a.games);
 export const GAME_POINTS = 100;
-export const DAY_POINTS = ORDER.length * GAME_POINTS;
+/** The most a day can be worth before Risk: three games from each act. */
+export const DAY_POINTS = ACTS.length * 3 * GAME_POINTS;
 /** The finale. Not one of the ten: your day's points become your bankroll there. */
 export const FINALE = "house";
 
@@ -34,23 +36,48 @@ export function pointsFor(gameId, result) {
   return CONVERT[gameId] ? clamp(CONVERT[gameId](result)) : 0;
 }
 
+/** How many games from each act make up a day's series. */
+export const PICKS = 3;
+
+/** The games in an act this player may choose from: the free ones, plus any they have unlocked. */
+export const available = (act) => act.games.filter(isUnlocked);
+
 /**
- * Where the day's series stands for this player. A player's series is the games they have
- * open: three free ones in each act, plus any they have unlocked. Returns points per game
- * (null if unplayed), the acts with their `open` games and totals, the `max` the day can be
- * worth, the next game to play, and `final` once the score is locked in or taken through Risk.
+ * The day's lineup: which games (up to three per act) the player chose to play for points,
+ * as { play: [...], know: [...] }. Until they choose, it is the first three they have in each act.
+ */
+export function lineupFor(day = dayKey()) {
+  const saved = gameStore("series").flag(`lineup.${day}`);
+  if (saved) return Object.fromEntries(ACTS.map((a) => [a.id, (saved[a.id] ?? []).filter((id) => a.games.includes(id)).slice(0, PICKS)]));
+  return Object.fromEntries(ACTS.map((a) => [a.id, available(a).slice(0, PICKS)]));
+}
+
+/** Save the day's lineup. `picks` is { play: [...], know: [...] }; extras and locked games are dropped. */
+export function chooseLineup(day, picks) {
+  const lineup = Object.fromEntries(ACTS.map((a) => [a.id, (picks[a.id] ?? []).filter((id) => available(a).includes(id)).slice(0, PICKS)]));
+  gameStore("series").setFlag(`lineup.${day}`, lineup);
+  return lineup;
+}
+
+/**
+ * Where the day's series stands for this player. The series is their lineup: up to three
+ * games from each act. Returns points per game (null if unplayed), the acts with their `open`
+ * (chosen) games and totals, the `max` the day can be worth, the next game to play,
+ * `needsPick` while the lineup is still to be chosen, and `final` once the score is locked in
+ * or taken through Risk.
  */
 export function seriesState(day = dayKey()) {
-  const open = ORDER.filter(isUnlocked);
+  const lineup = lineupFor(day);
+  const open = lineup ? ACTS.flatMap((a) => lineup[a.id]) : [];
   const points = Object.fromEntries(ORDER.map((id) => [id, pointsFor(id, gameStore(id).getDay(day))]));
   const acts = ACTS.map((a) => {
-    const mine = a.games.filter((id) => open.includes(id));
-    return { ...a, open: mine, max: mine.length * GAME_POINTS, points: mine.reduce((sum, id) => sum + (points[id] ?? 0), 0), done: mine.every((id) => points[id] !== null) };
+    const mine = lineup ? lineup[a.id] : [];
+    return { ...a, open: mine, max: mine.length * GAME_POINTS, points: mine.reduce((sum, id) => sum + (points[id] ?? 0), 0), done: !!lineup && mine.every((id) => points[id] !== null) };
   });
   const played = open.filter((id) => points[id] !== null).length;
   const total = acts.reduce((sum, a) => sum + a.points, 0);
   const saved = gameStore("series").getDay(day);
-  return { day, open, points, acts, played, total, max: open.length * GAME_POINTS, next: open.find((id) => points[id] === null) ?? null, complete: played === open.length, final: saved ?? null };
+  return { day, lineup, needsPick: !lineup, open, points, acts, played, total, max: open.length * GAME_POINTS, next: open.find((id) => points[id] === null) ?? null, complete: !!lineup && open.length > 0 && played === open.length, final: saved ?? null };
 }
 
 /** Every day this browser has a result for. */

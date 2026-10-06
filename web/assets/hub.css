@@ -65,3 +65,27 @@ a.game:hover { background: var(--surface-2); border-color: var(--line-2); }
 .game.locked { background: color-mix(in srgb, var(--surface) 55%, var(--bg)); border-style: dashed; }
 .game.locked .dot { background: none; border: 1px dashed var(--c); }
 .game.locked b { color: var(--muted); }
+
+/* Choosing the day's games: one row per game, tap to put it in or take it out */
+.section .dg-label { display: flex; justify-content: space-between; }
+.section .dg-label span { letter-spacing: 0; text-transform: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+.picks { display: flex; flex-direction: column; gap: 8px; }
+.pick { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; width: 100%; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); text-align: left; text-decoration: none; transition: border-color 0.15s, opacity 0.15s; }
+.pick i { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--c); }
+.pick b { font-size: 17px; font-weight: 600; }
+.pick span { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.pick[aria-pressed="true"] { border-color: var(--c); }
+.pick[aria-pressed="true"] i { background: var(--c); }
+.pick[aria-pressed="true"] span { color: var(--c); }
+.pick:disabled { opacity: 0.4; cursor: not-allowed; }
+.pick.locked { border-style: dashed; background: none; }
+.pick.locked b { color: var(--muted); }
+.pick.locked i { border-style: dashed; }
+button.step { width: 100%; text-align: left; color: var(--text); cursor: pointer; }
+button.step:hover { border-color: var(--line-2); }
+.step.pickable .pts { color: var(--muted); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+/* The picker sits over the hub and lets it show through */
+.dg-overlay.sheet { background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.dg-overlay.sheet .dg-modal { background: color-mix(in srgb, var(--surface) 88%, transparent); }
+.pick.locked { opacity: 0.75; }
+.pick.locked span { color: var(--muted); }
