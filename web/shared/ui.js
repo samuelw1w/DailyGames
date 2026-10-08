@@ -2,7 +2,7 @@
 // next puzzle and the "you beat X%" line.
 import { getStats } from "./api.js";
 import { msUntilMidnight, formatCountdown } from "./daily.js";
-import { gameStore } from "./storage.js";
+import { gameStore, clientId } from "./storage.js";
 import { GAMES } from "./registry.js";
 import { seriesState, pointsFor, wallet, FINALE } from "./series.js";
 import { LOCKED, isPlus, isUnlocked, unlockGame, dayQuery, activeDay } from "./account.js";
@@ -133,7 +133,7 @@ export function startCountdown(el) {
 
 /** "You beat 64% of 120 players". Uses the submit response, or asks the API on a return visit. */
 export async function showRank(el, sent, game, day, total) {
-  const res = (await sent) ?? (await getStats(game, day, total));
+  const res = (await sent) ?? (await getStats(game, day, total, clientId()));
   const rank = res?.rank;
   if (!rank || !el?.isConnected || rank.players < 2) return;
   el.innerHTML = `You beat <b>${rank.betterThan}%</b> of ${rank.players.toLocaleString("en-US")} players today.`;
