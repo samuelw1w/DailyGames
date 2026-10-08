@@ -65,9 +65,26 @@ test("stats aggregate picks, histogram and rank", async () => {
   assert.equal(s.rounds.length, 5);
   assert.deepEqual(s.rounds[0].top[0], { answer: best[0], n: 2 });
   assert.equal(s.rounds[0].total, 2, "timeouts are not counted as picks");
-  assert.deepEqual(s.rank, { players: 3, betterThan: 50 });
+  // 250 isn't any stored play, so the asker is a 4th player who beat 1 of the 3 others.
+  assert.deepEqual(s.rank, { players: 4, betterThan: 33 });
 
   assert.equal((await get("/games/middleman/days/2999-01-01/stats")).status, 400, "future days stay hidden");
+  assert.equal((await get(`/games/middleman/days/${TODAY}/stats?score=1&clientId=x`)).status, 400, "malformed clientId");
+});
+
+test("rank stays within 0-100% whether or not the asker's play is stored", async () => {
+  const best = bestAnswers(TODAY);
+  const first = await (await post("/games/middleman/plays", { day: TODAY, clientId: "client-1111-a", answers: best })).json();
+  await post("/games/middleman/plays", { day: TODAY, clientId: "client-2222-b", answers: [null, null, null, null, null] });
+  const rank = async (q) => (await (await get(`/games/middleman/days/${TODAY}/stats?${q}`)).json()).rank;
+
+  // A score above every stored play from a browser with no stored play (e.g. the submit failed).
+  assert.deepEqual(await rank("score=500&clientId=client-9999-z"), { players: 3, betterThan: 100 });
+  assert.deepEqual(await rank("score=500"), { players: 3, betterThan: 100 });
+  // A stored player asking about their own score isn't compared with themselves.
+  assert.deepEqual(await rank(`score=${first.score}&clientId=client-1111-a`), { players: 2, betterThan: 100 });
+  assert.deepEqual(await rank(`score=${first.score}`), { players: 2, betterThan: 100 });
+  assert.deepEqual(await rank("score=0&clientId=client-2222-b"), { players: 2, betterThan: 0 });
 });
 
 test("CORS headers only for allowed origins", async () => {
