@@ -4,6 +4,7 @@ import { handleApi } from "../api/src/index.js";
 import { fakeD1 } from "./helpers/fake-d1.js";
 import { dailyRounds, closest } from "../web/games/middleman/core/puzzle.js";
 import { nameFor } from "../web/shared/names.js";
+import { timingFlags } from "../api/src/games/series.js";
 
 const TODAY = new Date().toISOString().slice(0, 10); // UTC today is always "today" somewhere
 let env;
@@ -88,13 +89,19 @@ test("rank stays within 0-100% whether or not the asker's play is stored", async
   assert.deepEqual(await rank("score=0&clientId=client-2222-b"), { players: 2, betterThan: 0 });
 });
 
-/** A play the server already scored, as if the game had been posted. */
-const stored = (game, clientId, score, day = TODAY) => env.DB.prepare("INSERT INTO plays (game, day, client_id, score, detail) VALUES (?1, ?2, ?3, ?4, '{}')").bind(game, day, clientId, score).run();
+/** A play the server already scored, as if the game had been posted. `at` is when it arrived (default: now). */
+const stored = (game, clientId, score, day = TODAY, at = new Date()) =>
+  env.DB.prepare("INSERT INTO plays (game, day, client_id, score, detail, created_at) VALUES (?1, ?2, ?3, ?4, '{}', ?5)").bind(game, day, clientId, score, at.toISOString()).run();
 const LINEUP = { play: ["orbit", "pins", "stop"], know: ["middleman", "year", "jot"] };
-/** Store a whole day for a player: orbit in `jumps`, and the rest by score. Returns the day's score. */
-async function storeDay(clientId, { orbit = 5, pins = 70, stop = 80, middleman = 400, year = 90, jot = 60 } = {}, day = TODAY) {
-  for (const [game, score] of Object.entries({ orbit, pins, stop, middleman, year, jot })) await stored(game, clientId, score, day);
-  return (await post("/games/series/plays", { day, clientId, answers: { lineup: LINEUP } })).json();
+/**
+ * Store a whole day for a player: orbit in `jumps`, and the rest by score, finished a minute
+ * apart like a real player (`gapMs` to change that). Returns the day's score.
+ */
+async function storeDay(clientId, { orbit = 5, pins = 70, stop = 80, middleman = 400, year = 90, jot = 60 } = {}, day = TODAY, { gapMs = 60_000, human } = {}) {
+  const start = Date.now() - 6 * gapMs;
+  let i = 0;
+  for (const [game, score] of Object.entries({ orbit, pins, stop, middleman, year, jot })) await stored(game, clientId, score, day, new Date(start + gapMs * i++));
+  return (await post("/games/series/plays", { day, clientId, answers: { lineup: LINEUP }, human })).json();
 }
 
 test("the day's score is added up by the server from the plays it holds", async () => {
@@ -116,7 +123,7 @@ test("the day's score is added up by the server from the plays it holds", async 
 test("day stats give the spread of scores, for the bell curve", async () => {
   await storeDay("client-curve-1", { year: 100 });
   await storeDay("client-curve-2", { year: 0 });
-  const s = await (await get(`/games/series/days/${TODAY}/stats?score=510`)).json();
+  const s = await (await get(`/games/series/days/${TODAY}/stats?score=520`)).json();
   assert.equal(s.players, 2);
   assert.equal(s.maxScore, 600);
   assert.equal(s.averageScore, 470);
@@ -152,4 +159,100 @@ test("CORS headers only for allowed origins", async () => {
   assert.equal(allowed.headers.get("access-control-allow-origin"), "https://example.com");
   const other = await handleApi(new Request("https://games.test/api/health", { headers: { origin: "https://evil.test" } }), env);
   assert.equal(other.headers.get("access-control-allow-origin"), null);
+});
+
+/* ---------------- Abuse protection ---------------- */
+
+const board = async (clientId) =>
+  (await handleApi(new Request(`https://games.test/api/leaderboard/${TODAY}`, { headers: clientId ? { "x-client-id": clientId } : {} }), env)).json();
+const flagsOf = async (clientId) => JSON.parse((await env.DB.prepare("SELECT detail FROM plays WHERE game = 'series' AND client_id = ?1").bind(clientId).first()).detail).flags;
+
+/** Answer Turnstile's siteverify like Cloudflare would: only the token "good" passes. */
+function fakeTurnstile(t, answer = async (form) => Response.json({ success: form.get("response") === "good" })) {
+  const real = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    assert.equal(url, "https://challenges.cloudflare.com/turnstile/v0/siteverify");
+    assert.equal(init.body.get("secret"), "turnstile-secret");
+    return answer(init.body);
+  };
+  t.after(() => { globalThis.fetch = real; });
+  env.TURNSTILE_SECRET = "turnstile-secret";
+}
+
+test("writes are rate limited per IP, reads aren't", async () => {
+  const keys = [];
+  env.WRITE_LIMITER = { limit: async ({ key }) => { keys.push(key); return { success: false }; } };
+  const res = await post("/games/middleman/plays", { day: TODAY, clientId: "client-rate-1", answers: bestAnswers(TODAY) }, { "cf-connecting-ip": "203.0.113.9" });
+  assert.equal(res.status, 429);
+  assert.equal(res.headers.get("retry-after"), "60");
+  assert.ok((await res.json()).error);
+  assert.deepEqual(keys, ["203.0.113.9"]);
+  assert.equal((await get("/health")).status, 200, "GETs don't count");
+
+  env.WRITE_LIMITER = { limit: async () => ({ success: true }) };
+  assert.equal((await post("/games/middleman/plays", { day: TODAY, clientId: "client-rate-1", answers: bestAnswers(TODAY) })).status, 201);
+});
+
+test("a series without a Turnstile pass still counts for its player, but nobody else sees it", async (t) => {
+  fakeTurnstile(t);
+  env.RISK_SECRET = "risk-secret";
+  const human = await storeDay("client-human-1", { jot: 0 }, TODAY, { human: "good" });
+  const bot = await storeDay("client-bot-1", { jot: 100 }, TODAY, { human: "forged" });
+  await storeDay("client-bot-2", { jot: 100 }); // no token at all
+  assert.equal(bot.score, 550, "scored as usual");
+  assert.deepEqual(await flagsOf("client-bot-1"), ["no-human"]);
+  assert.deepEqual(await flagsOf("client-bot-2"), ["no-human"]);
+  assert.equal(await flagsOf("client-human-1"), undefined);
+
+  const everyone = await board();
+  assert.equal(everyone.players, 1);
+  assert.deepEqual(everyone.top.map((p) => p.score), [human.score]);
+
+  // The hidden player sees a normal board with themselves on it.
+  const theirs = await board("client-bot-1");
+  assert.equal(theirs.players, 2);
+  assert.deepEqual(theirs.top.map((p) => p.score), [550, human.score]);
+  assert.equal(theirs.top[0].you, true);
+  assert.deepEqual(theirs.you, { rank: 1, name: nameFor("client-bot-1"), score: 550, days: 1 });
+
+  // The bell curve and the most chosen games leave it out too, except in its own rank.
+  const s = await (await get(`/games/series/days/${TODAY}/stats?score=550&clientId=client-bot-1`)).json();
+  assert.equal(s.players, 1);
+  assert.equal(s.rounds[0].total, 3, "only the visible lineup is counted");
+  assert.deepEqual(s.rank, { players: 2, betterThan: 100 });
+
+  // Risk still plays for the hidden day's score.
+  const risk = await post("/risk/state", { day: TODAY, clientId: "client-bot-1" });
+  assert.equal(risk.status, 200);
+  assert.equal((await risk.json()).base, 550);
+});
+
+test("without TURNSTILE_SECRET, or when Cloudflare can't be reached, nothing is hidden", async (t) => {
+  await storeDay("client-open-1");
+  assert.equal(await flagsOf("client-open-1"), undefined, "no secret: not checked");
+
+  fakeTurnstile(t, async () => { throw new TypeError("fetch failed"); });
+  t.mock.method(console, "error", () => {});
+  await storeDay("client-open-2", {}, TODAY, { human: "good" });
+  assert.equal(await flagsOf("client-open-2"), undefined);
+  assert.equal((await board()).players, 2);
+});
+
+test("a day finished faster than anyone could play it is hidden", async () => {
+  await storeDay("client-quick-1", {}, TODAY, { gapMs: 2_000 });
+  await storeDay("client-steady-1", { jot: 0 });
+  assert.deepEqual(await flagsOf("client-quick-1"), ["too-fast"]);
+  assert.equal(await flagsOf("client-steady-1"), undefined);
+  assert.equal((await board()).players, 1);
+  assert.equal((await board("client-quick-1")).players, 2);
+});
+
+test("timing flags: a minimum per game and between any two games", () => {
+  const at = (...s) => s.map((x) => x * 1000);
+  assert.deepEqual(timingFlags(at(0)), [], "one game can't be timed");
+  assert.deepEqual(timingFlags(at(0, 60, 120, 180, 240, 300)), []);
+  assert.deepEqual(timingFlags(at(300, 0, 240, 60, 180, 120)), [], "order doesn't matter");
+  assert.deepEqual(timingFlags(at(0, 10, 20, 30, 40, 50)), ["too-fast"], "six games in 50 s");
+  assert.deepEqual(timingFlags(at(0, 2, 100, 200, 300, 400)), ["too-fast"], "two games 2 s apart");
+  assert.deepEqual(timingFlags(at(0, 20)), [], "two games 20 s apart");
 });

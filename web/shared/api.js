@@ -31,11 +31,11 @@ async function call(path, init = {}) {
   return (status >= 200 && status < 300) || status === 409 ? body : null;
 }
 
-/** Record a finished daily play. Returns { score, rank } or null. */
-export const submitPlay = (game, day, clientId, answers) =>
+/** Record a finished daily play. Returns { score, rank } or null. `extra` adds fields to the body (the series' `human` token). */
+export const submitPlay = (game, day, clientId, answers, extra = {}) =>
   call(`/games/${encodeURIComponent(game)}/plays`, {
     method: "POST",
-    body: JSON.stringify({ day, clientId, answers }),
+    body: JSON.stringify({ day, clientId, answers, ...extra }),
   });
 
 /** Crowd stats for a day: players, score histogram, top answers per round.
@@ -47,3 +47,15 @@ export function getStats(game, day, score, clientId) {
   if (score != null && clientId) q.set("clientId", clientId);
   return call(`/games/${encodeURIComponent(game)}/days/${encodeURIComponent(day)}/stats${String(q) ? `?${q}` : ""}`);
 }
+
+/**
+ * Risk, dealt by the server. `action` is "state", "play" or "stop"; `extra` is the hand
+ * ({ table, pick } or { table: "blackjack", move }). Resolves to { status, body }: the run on
+ * success, { error } otherwise, and status 0 when the API couldn't be reached.
+ */
+export const risk = (action, day, clientId, extra = {}) =>
+  request(`/risk/${action}`, { method: "POST", body: JSON.stringify({ day, clientId, ...extra }) });
+
+/** The leaderboard for everyone: the best day's scores for `day`, or over the week to it (`scope` "week"). */
+export const getLeaderboard = (day, clientId, scope = "day") =>
+  call(`/leaderboard/${encodeURIComponent(day)}${scope === "week" ? "?scope=week" : ""}`, { headers: { "x-client-id": clientId } });

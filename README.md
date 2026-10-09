@@ -101,6 +101,7 @@ Needs Node 22.5 or newer.
 npm install
 npm run db:migrate:local   # creates the local SQLite database
 echo "RISK_SECRET=\"$(openssl rand -hex 24)\"" > .dev.vars   # Risk's dealing secret for local use (gitignored)
+echo 'TURNSTILE_SECRET="1x0000000000000000000000000000000AA"' >> .dev.vars   # Turnstile's always-pass test secret
 npm run dev                # http://localhost:8787
 npm test
 ```
@@ -112,8 +113,11 @@ npx wrangler login
 npx wrangler d1 create daily-games      # copy the database_id it prints into wrangler.toml
 npm run db:migrate                      # create the tables in the real database
 npx wrangler secret put RISK_SECRET     # paste a long random string: Risk deals every hand from it
+npx wrangler secret put TURNSTILE_SECRET  # from your Turnstile widget (see below)
 npm run deploy                          # prints your URL, e.g. https://daily-games.<you>.workers.dev
 ```
+
+**Turnstile.** In the Cloudflare dashboard, add a Turnstile widget in **Invisible** mode for your domain. Put its site key in `SITE_KEY` in `web/shared/human.js` and deploy, then set `TURNSTILE_SECRET` from its secret key. Until the secret is set, nobody is checked. Once it is set, a missing site key hides every day from the leaderboards.
 
 After that, `npm run deploy` publishes any change. To use your own domain, add it under the Worker's **Settings → Domains & Routes** in the Cloudflare dashboard.
 

@@ -15,6 +15,13 @@ database_name = "daily-games"
 database_id = "77581fa6-28c0-4499-8681-5db8652007b8"
 migrations_dir = "api/migrations"
 
+# Caps writes (every POST /api/*) per IP. Generous on purpose: a blackjack hand posts once per
+# move, and many players can share one IP. Counted per Cloudflare location, so it's approximate.
+[[ratelimits]]
+name = "WRITE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 60, period = 60 }
+
 [vars]
 # Only needed if the site is hosted on a different domain from the API, e.g.
 # "https://dailygames.example.com". Comma-separated. Leave empty for same-origin.

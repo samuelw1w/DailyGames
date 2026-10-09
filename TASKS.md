@@ -15,22 +15,19 @@ The backlog from the October 2026 review. **Delete a task from this file once it
 
 ## Before the next deploy
 
-- [ ] Run `npm run db:migrate` (adds `risk_runs`, from `api/migrations/0002_risk.sql`) and `npx wrangler secret put RISK_SECRET`. Without the secret, Risk answers 503.
+- [ ] Run `npm run db:migrate` **before deploying**. It adds `risk_runs` (`0002_risk.sql`) and the `plays.hidden` column (`0003_trust.sql`), and the new Worker fails to save plays without that column.
+- [ ] `npx wrangler secret put RISK_SECRET`. Without it, Risk answers 503.
+- [ ] Turnstile: add a widget in **Invisible** mode for the site's domain in the Cloudflare dashboard, put its site key in `SITE_KEY` in `web/shared/human.js`, deploy, and only then `npx wrangler secret put TURNSTILE_SECRET`. With the secret but no site key, every day is hidden from the leaderboards. Without the secret, nothing is checked.
 - [ ] Optional: clear the local dev seed data (80 fake `seed-player-*` rows) by deleting `.wrangler/state` and re-running `npm run db:migrate:local`.
 
 ## Now / before launch
-
-### Abuse protection for the API (M)
-The Everyone leaderboard is public now, and every puzzle can be worked out in the browser (the Middleman answers, Orbit's solver). A script can mint `clientId`s and post perfect days.
-- Add Cloudflare rate-limiting rules on `POST /api/*` and/or Turnstile on the `series` submit (`web/shared/series.js → reportDay`, `api/src/plays.js`).
-- Consider hiding or flagging leaderboard rows from client ids under a day old, or rows with impossible timing.
-- Test: `tests/api.test.js`.
 
 ### Measure how long a day takes (S)
 Nothing records timing yet, so we can't decide whether the day is too long (six games plus Risk is a guess of 10–15 minutes).
 - Have each game send `startedAt`/`finishedAt` (or a duration in ms) inside its `answers` → store it in `plays.detail`. The `series` submit could carry first-start and last-finish times.
 - Write a D1 query (or a small admin endpoint) for the median time per game and per full day.
 - Then decide: keep 3+3, or go to 2 per act plus a bonus game, or make Know optional.
+- Also use the medians to tune `MIN_GAP_MS` and `MIN_GAME_MS` in `api/src/games/series.js`. They hide days finished faster than a person could play them, judged from when each play arrived (`plays.created_at`), and are set loosely for now.
 
 ### Whole-day streak, shown prominently (S)
 `dayStreak()` in `series.js` already counts days with a game played on time, but the hub only shows it in its subtitle (`web/assets/hub.js`, `$("today")`). Result screens show per-game streaks (`web/shared/ui.js → resultScreen`, from `storage.js → stats()`).

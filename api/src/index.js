@@ -17,11 +17,19 @@ const routes = [
   ["GET", /^\/api\/leaderboard\/([0-9-]+)$/, (req, env, [day]) => leaderboard(req, env, day)],
 ];
 
+/** Too many writes from one IP in the last minute: 429. Skipped where there's no limiter (tests). */
+async function limitWrites(request, env) {
+  if (!env.WRITE_LIMITER) return;
+  const { success } = await env.WRITE_LIMITER.limit({ key: request.headers.get("cf-connecting-ip") ?? "unknown" });
+  if (!success) throw new HttpError(429, "Too many requests. Wait a minute and try again.", { "retry-after": "60" });
+}
+
 export async function handleApi(request, env) {
   const cors = corsHeaders(request, env);
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   const { pathname } = new URL(request.url);
   try {
+    if (request.method === "POST") await limitWrites(request, env);
     for (const [method, pattern, handler] of routes) {
       const m = pathname.match(pattern);
       if (!m) continue;
@@ -30,7 +38,7 @@ export async function handleApi(request, env) {
     }
     throw new HttpError(404, "Not found.");
   } catch (err) {
-    if (err instanceof HttpError) return withHeaders(json({ error: err.message }, err.status), cors);
+    if (err instanceof HttpError) return withHeaders(json({ error: err.message }, err.status, err.headers), cors);
     console.error(err);
     return withHeaders(json({ error: "Something went wrong on our side." }, 500), cors);
   }
