@@ -39,18 +39,11 @@ export const submitPlay = (game, day, clientId, answers) =>
   });
 
 /** Crowd stats for a day: players, score histogram, top answers per round.
- *  Pass `score` to also get how that score ranks against everyone else. */
-export const getStats = (game, day, score) =>
-  call(`/games/${encodeURIComponent(game)}/days/${encodeURIComponent(day)}/stats${score != null ? `?score=${Number(score)}` : ""}`);
-
-/**
- * Risk, dealt by the server. `action` is "state", "play" or "stop"; `extra` is the hand
- * ({ table, pick } or { table: "blackjack", move }). Resolves to { status, body }: the run on
- * success, { error } otherwise, and status 0 when the API couldn't be reached.
- */
-export const risk = (action, day, clientId, extra = {}) =>
-  request(`/risk/${action}`, { method: "POST", body: JSON.stringify({ day, clientId, ...extra }) });
-
-/** The leaderboard for everyone: the best day's scores for `day`, or over the week to it (`scope` "week"). */
-export const getLeaderboard = (day, clientId, scope = "day") =>
-  call(`/leaderboard/${encodeURIComponent(day)}${scope === "week" ? "?scope=week" : ""}`, { headers: { "x-client-id": clientId } });
+ *  Pass `score` to also get how that score ranks against everyone else, and `clientId`
+ *  so this browser's own stored play isn't counted among them. */
+export function getStats(game, day, score, clientId) {
+  const q = new URLSearchParams();
+  if (score != null) q.set("score", String(Number(score)));
+  if (score != null && clientId) q.set("clientId", clientId);
+  return call(`/games/${encodeURIComponent(game)}/days/${encodeURIComponent(day)}/stats${String(q) ? `?${q}` : ""}`);
+}

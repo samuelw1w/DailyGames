@@ -12,16 +12,29 @@ function gameOr404(id) {
   return game;
 }
 
-/** How a score compares with everyone else's for that day. */
-async function rankFor(db, game, day, score) {
+/**
+ * How a score compares with everyone else's for that day. The asker always counts as one
+ * of `players`, whether or not their play is stored: their own row (found by `clientId`)
+ * is left out of the comparison. Without a clientId, a stored play with the same score
+ * is assumed to be theirs.
+ */
+async function rankFor(db, game, day, score, clientId = null) {
   const row = await db
-    .prepare("SELECT COUNT(*) AS players, SUM(CASE WHEN score < ?1 THEN 1 ELSE 0 END) AS below FROM plays WHERE game = ?2 AND day = ?3")
-    .bind(score, game, day)
+    .prepare(
+      `SELECT COUNT(*) AS total,
+              SUM(CASE WHEN score < ?1 AND client_id IS NOT ?4 THEN 1 ELSE 0 END) AS below,
+              SUM(CASE WHEN client_id = ?4 THEN 1 ELSE 0 END) AS mine,
+              SUM(CASE WHEN score = ?1 THEN 1 ELSE 0 END) AS tied
+       FROM plays WHERE game = ?2 AND day = ?3`,
+    )
+    .bind(score, game, day, clientId)
     .first();
-  const players = row?.players ?? 0;
+  const total = row?.total ?? 0;
   const below = row?.below ?? 0;
-  const others = Math.max(0, players - 1);
-  return { players, betterThan: others ? Math.round((100 * below) / others) : 0 };
+  const mine = clientId ? Math.min(1, row?.mine ?? 0) : (row?.tied ? 1 : 0);
+  const others = Math.max(0, total - mine);
+  const betterThan = others ? Math.min(100, Math.max(0, Math.round((100 * below) / others))) : 0;
+  return { players: others + 1, betterThan };
 }
 
 /** POST /api/games/:game/plays  { day, clientId, answers } */
@@ -42,7 +55,7 @@ export async function submitPlay(request, env, gameId) {
   if (!inserted.meta?.changes) {
     // Already played today from this browser: keep the first result, report it.
     const prior = await env.DB.prepare("SELECT score FROM plays WHERE game = ?1 AND day = ?2 AND client_id = ?3").bind(game.id, day, clientId).first();
-    const rank = await rankFor(env.DB, game.id, day, prior.score);
+    const rank = await rankFor(env.DB, game.id, day, prior.score, clientId);
     return json({ alreadyPlayed: true, score: prior.score, rank }, 409);
   }
 
@@ -53,11 +66,11 @@ export async function submitPlay(request, env, gameId) {
     await env.DB.batch(picks.map((p) => upsert.bind(game.id, day, p.round, p.answer)));
   }
 
-  const rank = await rankFor(env.DB, game.id, day, score);
+  const rank = await rankFor(env.DB, game.id, day, score, clientId);
   return json({ score, rank }, 201);
 }
 
-/** GET /api/games/:game/days/:day/stats[?score=N] */
+/** GET /api/games/:game/days/:day/stats[?score=N[&clientId=ID]] */
 export async function dayStats(request, env, gameId, day) {
   const game = gameOr404(gameId);
   if (!isRevealed(day)) throw new HttpError(400, "day must be a valid date that isn't in the future.");
@@ -100,7 +113,9 @@ export async function dayStats(request, env, gameId, day) {
   const url = new URL(request.url);
   if (url.searchParams.has("score")) {
     const s = Number(url.searchParams.get("score"));
-    if (Number.isFinite(s)) out.rank = await rankFor(env.DB, game.id, day, s);
+    const clientId = url.searchParams.get("clientId");
+    if (clientId != null && !CLIENT_ID_RE.test(clientId)) throw new HttpError(400, "clientId is malformed.");
+    if (Number.isFinite(s)) out.rank = await rankFor(env.DB, game.id, day, s, clientId);
   }
   return json(out, 200, { "cache-control": "public, max-age=30" });
 }

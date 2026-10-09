@@ -2,7 +2,7 @@
 // next puzzle and the "you beat X%" line.
 import { getStats } from "./api.js";
 import { msUntilMidnight, formatCountdown } from "./daily.js";
-import { gameStore } from "./storage.js";
+import { gameStore, clientId } from "./storage.js";
 import { GAMES } from "./registry.js";
 import { seriesState, pointsFor, wallet, FINALE } from "./series.js";
 import { LOCKED, isPlus, isUnlocked, unlockGame, dayQuery, activeDay } from "./account.js";
@@ -13,7 +13,11 @@ globalThis.dgBlinds?.setGameColors(Object.fromEntries(GAMES.map((g) => [g.id, g.
 
 export const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
-/** Open a dialog. `body` is trusted HTML. Closes on the button, Escape or a click outside. */
+/**
+ * Open a dialog. `body` is trusted HTML. Closes on the button, Escape or a click outside.
+ * A body that is a numbered list (every game's how-to) is shown as one card per step, to
+ * swipe or step through; the button reads Next until the last card.
+ */
 export function modal({ title, body, button = "Got it", onClose }) {
   const o = document.createElement("div");
   o.className = "dg-overlay";
@@ -22,12 +26,51 @@ export function modal({ title, body, button = "Got it", onClose }) {
     <button class="dg-btn" type="button">${esc(button)}</button>
   </div>`;
   document.body.appendChild(o);
+  const btn = o.querySelector(".dg-modal > .dg-btn");
   const close = () => { o.remove(); document.removeEventListener("keydown", onKey); onClose?.(); };
+  let next = () => false; // moves to the next step card; false once there is none
   const onKey = (e) => { if (e.key === "Escape") close(); };
   o.addEventListener("click", (e) => { if (e.target === o) close(); });
-  o.querySelector(".dg-btn").addEventListener("click", close);
+  btn.addEventListener("click", () => { if (!next()) close(); });
   document.addEventListener("keydown", onKey);
-  o.querySelector(".dg-btn").focus();
+
+  const list = o.querySelector(".dg-modal > ol");
+  if (list && list.children.length > 1) {
+    const steps = [...list.children], track = document.createElement("div"), dots = document.createElement("div");
+    track.className = "dg-steps";
+    dots.className = "dg-stepdots";
+    steps.forEach((li, i) => {
+      // The bold lead of each step becomes the card's heading; the rest is its text.
+      const lead = li.querySelector("b"), head = lead ? lead.textContent.trim().replace(/[.,:]$/, "") : "";
+      lead?.remove();
+      const text = li.innerHTML.trim();
+      const card = document.createElement("article");
+      card.className = "dg-step";
+      card.innerHTML = `<span class="n">${i + 1}<i> / ${steps.length}</i></span><h4>${esc(head)}</h4><p>${text.charAt(0).toUpperCase() + text.slice(1)}</p>`;
+      track.appendChild(card);
+      dots.appendChild(document.createElement("i"));
+    });
+    list.replaceWith(track);
+    track.after(dots);
+    const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const at = () => Math.round(track.scrollLeft / (track.scrollWidth / steps.length));
+    const go = (i) => track.scrollTo({ left: i * (track.scrollWidth / steps.length), behavior: calm ? "auto" : "smooth" });
+    // `want` is the card being shown or slid to, so quick taps on Next never stall mid-slide.
+    let want = 0, settle;
+    const sync = (i) => {
+      [...dots.children].forEach((d, n) => d.classList.toggle("on", n === i));
+      btn.textContent = i < steps.length - 1 ? "Next" : button;
+    };
+    const show = (i) => { want = i; go(i); sync(i); };
+    [...dots.children].forEach((d, n) => d.addEventListener("click", () => show(n)));
+    track.addEventListener("scroll", () => {
+      clearTimeout(settle);
+      settle = setTimeout(() => { want = at(); sync(want); }, 140); // a swipe has come to rest
+    }, { passive: true });
+    next = () => { if (want >= steps.length - 1) return false; show(want + 1); return true; };
+    sync(0);
+  }
+  btn.focus();
 }
 
 /**
@@ -90,7 +133,7 @@ export function startCountdown(el) {
 
 /** "You beat 64% of 120 players". Uses the submit response, or asks the API on a return visit. */
 export async function showRank(el, sent, game, day, total) {
-  const res = (await sent) ?? (await getStats(game, day, total));
+  const res = (await sent) ?? (await getStats(game, day, total, clientId()));
   const rank = res?.rank;
   if (!rank || !el?.isConnected || rank.players < 2) return;
   el.innerHTML = `You beat <b>${rank.betterThan}%</b> of ${rank.players.toLocaleString("en-US")} players today.`;
