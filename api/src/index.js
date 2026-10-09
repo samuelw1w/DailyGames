@@ -3,12 +3,18 @@
 import { HttpError, json, corsHeaders, withHeaders } from "./lib/http.js";
 import { GAMES } from "./games/index.js";
 import { submitPlay, dayStats } from "./plays.js";
+import { riskState, riskPlay, riskStop } from "./risk.js";
+import { leaderboard } from "./leaderboard.js";
 
 const routes = [
   ["GET", /^\/api\/health$/, () => json({ ok: true })],
   ["GET", /^\/api\/games$/, () => json({ games: [...GAMES.keys()] })],
   ["POST", /^\/api\/games\/([a-z0-9-]+)\/plays$/, (req, env, [game]) => submitPlay(req, env, game)],
   ["GET", /^\/api\/games\/([a-z0-9-]+)\/days\/([0-9-]+)\/stats$/, (req, env, [game, day]) => dayStats(req, env, game, day)],
+  ["POST", /^\/api\/risk\/state$/, (req, env) => riskState(req, env)],
+  ["POST", /^\/api\/risk\/play$/, (req, env) => riskPlay(req, env)],
+  ["POST", /^\/api\/risk\/stop$/, (req, env) => riskStop(req, env)],
+  ["GET", /^\/api\/leaderboard\/([0-9-]+)$/, (req, env, [day]) => leaderboard(req, env, day)],
 ];
 
 export async function handleApi(request, env) {

@@ -1,5 +1,7 @@
-// Friends page: the table for one day or for all time, a head-to-head with one friend, and
-// the last seven days.
+// Leaderboards: two boards, both ranked on the day's score (0 to 600, before Risk; Risk only
+// moves points). "Everyone" is real: the best scores the server holds for a day or a week, under
+// names made from each player's client id. "Friends" is the table for one day or for all
+// time, a head-to-head with one friend, and the last seven days.
 //
 // THE FRIENDS HERE ARE A MOCK-UP. Their names and scores are made up in this file (the same
 // ones every time, from the date) so the page can be designed and tried before accounts
@@ -8,7 +10,10 @@
 import { GAMES } from "../shared/registry.js";
 import { dayKey, parseDayKey } from "../shared/daily.js";
 import { hash, mulberry32 } from "../shared/random.js";
-import { ACTS, ORDER, seriesState, times, playedDays, bankedOn } from "../shared/series.js";
+import { clientId } from "../shared/storage.js";
+import { getLeaderboard } from "../shared/api.js";
+import { nameFor } from "../shared/names.js";
+import { ACTS, ORDER, seriesState, playedDays } from "../shared/series.js";
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const $ = (id) => document.getElementById(id);
@@ -19,15 +24,14 @@ const BACK = 30; // how many days back the page goes
 
 /* ---------------- Made-up friends ---------------- */
 
-// `skill` is how well they usually score (0 to 1); `risk` how often they gamble their points.
+// `skill` is how well they usually score (0 to 1).
 const FRIENDS = [
-  { name: "Maya", skill: 0.8, risk: 0.3 },
-  { name: "Theo", skill: 0.68, risk: 0.85 },
-  { name: "Priya", skill: 0.74, risk: 0.5 },
-  { name: "Jonah", skill: 0.58, risk: 0.6 },
-  { name: "Lena", skill: 0.64, risk: 0.15 },
+  { name: "Maya", skill: 0.8 },
+  { name: "Theo", skill: 0.68 },
+  { name: "Priya", skill: 0.74 },
+  { name: "Jonah", skill: 0.58 },
+  { name: "Lena", skill: 0.64 },
 ];
-const MULTIPLES = [0.4, 0.6, 0.8, 0.8, 1, 1.2, 1.2, 1.4, 1.6, 2]; // Risk moves a score in steps of 0.2×, from 0× to 2×
 
 /** A made-up friend's day: the same shape as a real one, or null on a day they didn't play. */
 function friendDay(friend, day) {
@@ -36,17 +40,17 @@ function friendDay(friend, day) {
   // Like everyone, a friend plays three games from each act: here, a different three each day.
   const lineup = ACTS.flatMap((act) => [...act.games].sort(() => rng() - 0.5).slice(0, 3));
   const points = Object.fromEntries(ORDER.map((id) => [id, lineup.includes(id) ? Math.max(0, Math.min(100, Math.round(100 * (friend.skill + (rng() - 0.5) * 0.75)))) : null]));
-  const base = lineup.reduce((sum, id) => sum + points[id], 0);
-  const risked = rng() < friend.risk;
-  const total = risked ? Math.round(base * MULTIPLES[Math.floor(rng() * MULTIPLES.length)]) : base;
-  return { points, base, total, risked, done: true };
+  return { points, total: lineup.reduce((sum, id) => sum + points[id], 0), done: true };
 }
 
-/** Your own day, from what's saved in this browser, or null if you didn't play. */
+/**
+ * Your own day's score, from what's saved in this browser, or null if you didn't play it.
+ * A day played later (from the archive) isn't ranked, so it counts as not played here.
+ */
 function yourDay(day) {
   const s = seriesState(day);
-  if (!s.played) return null;
-  return { points: s.points, base: s.total, total: s.final?.total ?? s.total, risked: !!s.final?.house, done: !!s.final };
+  if (!s.played || s.late) return null;
+  return { points: s.points, total: s.total, done: s.complete };
 }
 
 /**
@@ -61,9 +65,8 @@ function career(keys, dayOf) {
 }
 const lastDays = () => Array.from({ length: BACK + 1 }, (_, n) => shift(TODAY, -n));
 const yourDays = playedDays;
-// Your all-time total is every point you have banked. Spending points on games doesn't lower it.
-const banked = (key) => { const total = bankedOn(key); return total ? { total } : null; };
-const careers = () => [{ name: "You", you: true, all: career(yourDays(), banked) }, ...FRIENDS.map((f) => ({ name: f.name, all: career(lastDays(), (key) => friendDay(f, key)) }))]
+// Your all-time total is every day's score added up. Risk and spending points don't change it.
+const careers = () => [{ name: "You", you: true, all: career(yourDays(), yourDay) }, ...FRIENDS.map((f) => ({ name: f.name, all: career(lastDays(), (key) => friendDay(f, key)) }))]
   .sort((a, b) => b.all.total - a.all.total);
 
 const everyone = (day) => [{ name: "You", you: true, day: yourDay(day) }, ...FRIENDS.map((f) => ({ name: f.name, day: friendDay(f, day) }))]
@@ -74,6 +77,7 @@ const everyone = (day) => [{ name: "You", you: true, day: yourDay(day) }, ...FRI
 /** A friend's name, with a label on the one being compared with you further down. */
 const nameHtml = (p) => `<span class="name">${esc(p.name)}${p.name === versus ? `<em>Comparing</em>` : ""}</span>`;
 
+let board = location.hash === "#friends" ? "friends" : "everyone"; // which leaderboard is showing
 let day = TODAY;
 let versus = FRIENDS[0].name; // the friend you're being compared with. Their row is outlined and labelled.
 let scope = "daily";          // "daily" for one day's scores, "all" for everything added up
@@ -85,7 +89,7 @@ const actPoints = (d, act) => act.games.reduce((sum, id) => sum + (d.points[id] 
 function how(d) {
   if (!d) return "Didn't play";
   const acts = ACTS.map((a) => `${a.name} ${actPoints(d, a)}`).join(" · ");
-  return `${acts}${d.risked ? ` · ${d.total === 0 ? "bust" : times(d.total / d.base)}` : d.done ? "" : " · in progress"}`;
+  return `${acts}${d.done ? "" : " · in progress"}`;
 }
 
 /** The all-time table: everyone's points added up, and you against one friend over the long run. */
@@ -116,18 +120,49 @@ function renderAllTime() {
       </div>
       <div class="lines">${line("Days played", you.days, them.days)}${line("Average day", you.average, them.average)}${line("Best day", you.best, them.best)}${line("Days won", won, lost)}</div>
     </div>
-    <p class="tally">All-time points are every day's final score added up, after Risk. Points spent on unlocking games still count.</p>`;
+    <p class="tally">All-time is every day's score added up. Risk only moves points, so it doesn't count here, and neither do days played later.</p>`;
   document.querySelectorAll("[data-versus]").forEach((b) => b.addEventListener("click", () => { versus = b.dataset.versus; render(); }));
 }
 
+/* ---------------- Everyone ---------------- */
+
+/**
+ * The real board: the best scores the server holds for the day (or the week to it), with your
+ * own place under it when you aren't in the top twenty.
+ */
+async function renderEveryone() {
+  const week = scope === "all", asked = `${day}:${scope}`;
+  $("view").innerHTML = `<p class="tally">Loading the leaderboard…</p>`;
+  const lb = await getLeaderboard(day, clientId(), week ? "week" : "day");
+  if (board !== "everyone" || asked !== `${day}:${scope}`) return; // switched away while it loaded
+  const span = week ? "these seven days" : day === TODAY ? "today" : "that day";
+  if (!lb) { $("view").innerHTML = `<p class="tally">The leaderboard lives on the server, and it couldn't be reached. Your own scores are still saved in this browser.</p>`; return; }
+  const row = (p) => `<div class="dg-card who ${p.you ? "you" : ""}"><span class="rank">${p.rank ?? ""}</span><span class="face">${esc(p.name[0])}</span>
+      <span class="name">${esc(p.you ? `${p.name} (you)` : p.name)}</span>
+      <span class="total">${p.score === null ? "–" : fmt(p.score)}</span><span class="how">${week ? `${p.days} ${p.days === 1 ? "day" : "days"}` : p.you ? "Your score" : ""}</span></div>`;
+  const me = lb.you, inTop = lb.top.some((p) => p.you);
+  const mine = me && !inTop ? `<p class="gap">${me.score === null ? `You haven't finished a series ${span} yet.` : "Your place"}</p>${me.score === null ? "" : row({ ...me, you: true, days: me.days ?? "" })}` : "";
+  $("view").innerHTML = `
+    ${lb.top.length ? `<div class="board">${lb.top.map(row).join("")}</div>${mine}` : `<p class="tally">Nobody has finished a series ${span} yet. Be the first.</p>`}
+    <p class="tally">${fmt(lb.players)} ${lb.players === 1 ? "player" : "players"} ${span}, ranked on the day's score out of 600${week ? ", added up" : ""}. Risk only moves points, so it doesn't count here. You show up as ${esc(nameFor(clientId()))}.</p>`;
+}
+
 function render() {
-  $("days").hidden = scope === "all";
+  const all = board === "everyone";
+  $("board-everyone").setAttribute("aria-selected", String(all));
+  $("board-friends").setAttribute("aria-selected", String(!all));
+  $("tab-daily").textContent = all ? "Day" : "Daily";
+  $("tab-all").textContent = all ? "Week" : "All time";
+  $("sub").textContent = all ? "The best day's scores, from everyone who played" : "Sample friends, to show how this page will work";
+  $("foot").textContent = all ? "Names are given, not chosen, until there are accounts. Scores are checked by the server." : "These friends are made up, and so are their scores. Real ones need accounts, which the site doesn't have yet. Your own scores are real.";
+  $("days").hidden = !all && scope === "all";
   $("tab-daily").setAttribute("aria-selected", String(scope === "daily"));
   $("tab-all").setAttribute("aria-selected", String(scope === "all"));
-  if (scope === "all") return renderAllTime();
-  $("day").textContent = label(day);
+  $("day").textContent = all && scope === "all" ? `Week to ${label(day).toLowerCase() === "today" ? "today" : label(day)}` : label(day);
   $("next").disabled = day === TODAY;
   $("prev").disabled = day === shift(TODAY, -BACK);
+  if (all) return renderEveryone();
+  if (scope === "all") return renderAllTime();
 
   const people = everyone(day);
   const you = people.find((p) => p.you).day, them = people.find((p) => p.name === versus).day;
@@ -174,6 +209,9 @@ function render() {
   document.querySelectorAll("[data-day]").forEach((b) => b.addEventListener("click", () => { day = b.dataset.day; render(); }));
 }
 
+const pickBoard = (name) => { board = name; history.replaceState(null, "", `${location.pathname}${location.search}${name === "friends" ? "#friends" : ""}`); render(); };
+$("board-everyone").addEventListener("click", () => pickBoard("everyone"));
+$("board-friends").addEventListener("click", () => pickBoard("friends"));
 $("tab-daily").addEventListener("click", () => { scope = "daily"; render(); });
 $("tab-all").addEventListener("click", () => { scope = "all"; render(); });
 $("prev").addEventListener("click", () => { day = shift(day, -1); render(); });

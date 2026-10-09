@@ -1,6 +1,7 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { handleApi } from "../api/src/index.js";
+import { riskSeed } from "../api/src/risk.js";
 import { fakeD1 } from "./helpers/fake-d1.js";
 import {
   HANDS, STEP, TABLES, rouletteSpin, rouletteColor, handTotal, blackjack, baccarat, sicbo, craps,
@@ -124,17 +125,89 @@ test("a day: one to five hands at any tables, in any order", () => {
   }
 });
 
-/* ---------------- API ---------------- */
+/* ---------------- API: Risk dealt by the server ---------------- */
+const SECRET = "test-secret";
 let env;
-beforeEach(() => { env = { DB: fakeD1(), ALLOWED_ORIGINS: "" }; });
-const post = (body) => handleApi(new Request("https://games.test/api/games/house/plays", { method: "POST", body: JSON.stringify(body) }), env);
+beforeEach(() => { env = { DB: fakeD1(), ALLOWED_ORIGINS: "", RISK_SECRET: SECRET }; });
+const api = (path, body) => handleApi(new Request(`https://games.test/api${path}`, { method: "POST", body: JSON.stringify(body) }), env);
+const riskCall = async (action, clientId, extra = {}) => { const res = await api(`/risk/${action}`, { day: TODAY, clientId, ...extra }); return { status: res.status, body: await res.json() }; };
+/** The day's score as the server holds it: what the 'series' play would have stored. */
+const seriesScore = (clientId, score) => env.DB.prepare("INSERT INTO plays (game, day, client_id, score, detail) VALUES ('series', ?1, ?2, ?3, '{}')").bind(TODAY, clientId, score).run();
 
-test("API: the hands are dealt again and the day's points multiplied by the server", async () => {
-  const plays = [{ table: "roulette", pick: "red" }, { table: "sicbo", pick: "small" }];
-  const res = await post({ day: TODAY, clientId: "client-house-1", answers: { start: 638, plays } });
-  assert.equal(res.status, 201);
-  assert.equal((await res.json()).score, scoreAt(638, playDay(TODAY, plays).tenths));
-  for (const answers of [plays, { plays }, { start: 5000, plays }, { start: 638, plays: [] }, { start: 638, plays: [{ table: "roulette", pick: "n17" }] }]) {
-    assert.equal((await post({ day: TODAY, clientId: "client-house-2", answers })).status, 400, JSON.stringify(answers));
-  }
+test("API: Risk needs the server's secret and the day's score first", async () => {
+  delete env.RISK_SECRET;
+  assert.equal((await riskCall("state", "client-risk-1")).status, 503);
+  env.RISK_SECRET = SECRET;
+  assert.equal((await riskCall("state", "client-risk-1")).status, 409, "no series play yet");
+  await seriesScore("client-risk-1", 420);
+  const { status, body } = await riskCall("state", "client-risk-1");
+  assert.equal(status, 200);
+  assert.deepEqual(body, { base: 420, hands: [], tenths: 10, points: 420, open: null, done: false }, "the points come from the server's score, not the browser");
+  assert.equal((await riskCall("state", "x")).status, 400);
+});
+
+test("API: every player gets their own hands, dealt from a secret seed", async () => {
+  const a = await riskSeed(SECRET, TODAY, "client-risk-a"), b = await riskSeed(SECRET, TODAY, "client-risk-b");
+  assert.notEqual(a, b, "two players, two seeds");
+  assert.equal(a, await riskSeed(SECRET, TODAY, "client-risk-a"), "the same player always gets the same seed");
+  assert.notEqual(a, await riskSeed("another-secret", TODAY, "client-risk-a"), "without the secret the seed can't be worked out");
+  const spins = (seed) => [0, 1, 2, 3, 4].map((hand) => rouletteSpin(seed, hand)).join(",");
+  assert.notEqual(spins(a), spins(b));
+  assert.notEqual(spins(a), spins(TODAY), "and nobody's hands are the day's public ones");
+
+  await seriesScore("client-risk-a", 500);
+  const { status, body } = await riskCall("play", "client-risk-a", { table: "roulette", pick: "red" });
+  assert.equal(status, 200);
+  assert.equal(body.hands[0].number, rouletteSpin(a, 0));
+  assert.equal(body.hands[0].outcome, playTable(a, 0, { table: "roulette", pick: "red" }).outcome);
+});
+
+test("API: a hand is dealt once, in order, and can't be taken back", async () => {
+  await seriesScore("client-risk-c", 300);
+  const seed = await riskSeed(SECRET, TODAY, "client-risk-c");
+  await riskCall("play", "client-risk-c", { table: "sicbo", pick: "small" });
+  const second = await riskCall("play", "client-risk-c", { table: "sicbo", pick: "big" });
+  assert.equal(second.body.hands.length, 2, "asking again plays the next hand, not the same one");
+  assert.deepEqual(second.body.hands[1].dice, sicbo(seed, 1));
+  assert.equal((await riskCall("play", "client-risk-c", { table: "roulette", pick: "n17" })).status, 400);
+  assert.equal((await riskCall("play", "client-risk-c", { table: "poker", pick: "red" })).status, 400);
+  // The old way, posting a whole day of picks, is closed.
+  assert.equal((await api("/games/house/plays", { day: TODAY, clientId: "client-risk-c", answers: { start: 600, plays: [{ table: "roulette", pick: "red" }] } })).status, 400);
+});
+
+test("API: blackjack is dealt card by card, and only the dealer's up card shows", async () => {
+  // Find a player whose first hand isn't a natural, so there is a choice to make.
+  let id = null, seed = null;
+  for (let n = 0; !id; n++) { const c = `client-bj-${n}x`; const sd = await riskSeed(SECRET, TODAY, c); if (!blackjack(sd, "", 0).done) { id = c; seed = sd; } }
+  await seriesScore(id, 400);
+  assert.equal((await riskCall("play", id, { table: "blackjack", move: "H" })).status, 400, "deal before hitting");
+  const dealt = await riskCall("play", id, { table: "blackjack" });
+  assert.deepEqual(dealt.body.open.player, blackjack(seed, "", 0).player);
+  assert.equal(dealt.body.open.dealer.length, 1, "the hole card stays hidden");
+  assert.equal(dealt.body.hands.length, 0);
+  assert.equal((await riskCall("play", id, { table: "roulette", pick: "red" })).status, 409, "finish the hand first");
+  assert.equal((await riskCall("stop", id)).status, 409, "can't walk away mid-hand");
+  assert.equal((await riskCall("play", id, { table: "blackjack", move: "X" })).status, 400);
+  const stood = await riskCall("play", id, { table: "blackjack", move: "S" });
+  assert.equal(stood.body.open, null);
+  assert.equal(stood.body.hands[0].outcome, blackjack(seed, "S", 0).outcome);
+});
+
+test("API: stopping (or five hands) ends the run and records the points it made", async () => {
+  await seriesScore("client-risk-d", 450);
+  assert.equal((await riskCall("stop", "client-risk-d")).status, 409, "play a hand before stopping");
+  const played = await riskCall("play", "client-risk-d", { table: "craps", pick: "pass" });
+  const stopped = await riskCall("stop", "client-risk-d");
+  assert.equal(stopped.status, 200);
+  assert.equal(stopped.body.done, true);
+  assert.equal(stopped.body.points, scoreAt(450, tenthsAfter(played.body.hands.map((h) => h.outcome))));
+  assert.equal((await riskCall("play", "client-risk-d", { table: "craps", pick: "pass" })).status, 409, "the tables are closed");
+  const row = await env.DB.prepare("SELECT score FROM plays WHERE game = 'house' AND day = ?1 AND client_id = ?2").bind(TODAY, "client-risk-d").first();
+  assert.equal(row.score, stopped.body.points);
+
+  await seriesScore("client-risk-e", 200);
+  let last;
+  for (let i = 0; i < HANDS; i++) last = await riskCall("play", "client-risk-e", { table: "baccarat", pick: "banker" });
+  assert.equal(last.body.done, true, "five hands and the run is over");
+  assert.equal(last.body.hands.length, HANDS);
 });

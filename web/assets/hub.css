@@ -90,3 +90,6 @@ button.step:hover { border-color: var(--line-2); }
 .dg-overlay.sheet .dg-modal { background: color-mix(in srgb, var(--surface) 88%, transparent); }
 .pick.locked { opacity: 0.75; }
 .pick.locked span { color: var(--muted); }
+
+/* Where today's score sits among everyone's (shared/bell-curve.js) */
+.bell-more { align-self: flex-start; padding: 0; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }

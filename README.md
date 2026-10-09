@@ -8,14 +8,15 @@ Every day is one series: you pick up to three games from each act and play them 
 
 1. **Play**: three of five games of timing (Orbit, Pins, Skip, Hole, Stop).
 2. **Know**: three of five games of knowing (Middleman, Year, Close, Jot, Link).
-3. **Risk**: optional. Lock in your points, or risk them at the casino tables. You start at 1.0× and play up to five win-or-lose hands at any tables you like: each win adds 0.2×, each loss takes 0.2× away, and you can stop after any hand. So the day ends somewhere between nothing and double.
+3. **Risk**: optional. Bank the day's points as they are, or risk them at the casino tables. You start at 1.0× and play up to five win-or-lose hands at any tables you like: each win adds 0.2×, each loss takes 0.2× away, and you can stop after any hand. So the points end up somewhere between nothing and double. Risk never touches the day's score.
 
-Every game is worth up to 100 points, so a full day is six games and out of 600 before Risk, for everyone. Three games in each act are free; the other two (Skip, Hole, Close and Link) start locked. A player with only the free games has nothing to choose, so the series simply starts; once they have unlocked more (with points or Plus), the hub asks which three from each act they want that day. The hub's **Episodes** tab lists every game on its own: games in the day's lineup count for points wherever they're played, the rest are just for fun. The acts, the lineup and how each result becomes points live in [`web/shared/series.js`](web/shared/series.js).
+Every game is worth up to 100, so a full day is six games and a **score** out of 600, for everyone. Three games in each act are free; the other two (Skip, Hole, Close and Link) start locked. A player with only the free games has nothing to choose, so the series simply starts; once they have unlocked more (with points or Plus), the hub asks which three from each act they want that day. An act's three are fixed once any of its games has been played that day, so nobody can play all five and keep the best three. The hub's **Episodes** tab lists every game on its own: games in the day's lineup count toward the day's score wherever they're played, the rest are just for fun. The acts and how each result becomes 0 to 100 live in [`web/shared/scoring.js`](web/shared/scoring.js) (shared with the API); the lineup, the day's score and points in [`web/shared/series.js`](web/shared/series.js).
 
-### Points, unlocking and Plus
-- **Points.** A finished day's score is banked. The total is shown at the top of the hub as points to spend, and it is what friends see as your all-time score.
-- **Unlocking.** A locked game costs 20,000 points and stays open for good. Spending lowers the balance, never the all-time total.
-- **Plus.** The Plus button at the top of the hub leads to `web/plus/`. Plus opens every game (and any added later), removes the ad slots, and lets earlier days be played from a day stepper on the hub.
+### Score, points, unlocking and Plus
+- **Score.** The day's score, 0 to 600, is what you played. It is what gets shared and ranked: the hub's bell curve ("you beat 88% of players today"), the leaderboards, and friends. The server works it out from its own record of each game, so it can't be made up.
+- **Points.** What a finished day adds to your balance: the score as it stands if you bank it, or what Risk made of it (0× to 2×). The balance at the top of the hub is points to spend.
+- **Unlocking.** A locked game costs 20,000 points and stays open for good. Spending lowers the balance, never any score.
+- **Plus.** The Plus button at the top of the hub leads to `web/plus/`. Plus opens every game (and any added later), removes the ad slots, and lets earlier days be played from a day stepper on the hub. A day played later keeps an *archive score* (shown, marked "played later") and banks its points, but it isn't ranked, doesn't count toward a streak, and can't go to Risk.
 
 **Plus is a preview, not a product yet.** There are no accounts and no payments: `web/shared/account.js` keeps a Plus switch, the unlocked games and nothing else in the browser's storage, the price on the page is a placeholder, and the "ads" are empty slots. Anyone can turn Plus on for free. All of that needs a server before it can be sold.
 
@@ -31,11 +32,11 @@ Every game is worth up to 100 points, so a full day is six games and out of 600 
 | Close | Know | One estimate: how heavy, how fast, how big, how much. Three guesses to get close. |
 | Jot | Know | Find a hidden five-letter word. Each guess is only told how many letters it shares. |
 | Link | Know | Find the word that finishes one word and starts another (SUN ? HOUSE is LIGHT). Five a day. |
-| Risk | Finale | Up to five win-or-lose hands at roulette, blackjack, sic bo, baccarat or craps. Even-money choices only; each hand moves your multiplier by 0.2×. Lives in `web/games/house/`. |
+| Risk | Finale | Up to five win-or-lose hands at roulette, blackjack, sic bo, baccarat or craps. Even-money choices only; each hand moves your points' multiplier by 0.2×. The server deals every player their own hands, one at a time, so nothing can be looked up; Risk needs a connection. Lives in `web/games/house/` and `api/src/risk.js`. |
 
 Each game lives in `web/games/<id>/`. Every result screen, and the hub once the day is finished, has a **Share** button: it opens a preview of the message and ways to send it. The message ends with the site's address, which is a placeholder (`SITE` in `web/shared/ui.js`) until there is a real one.
 
-The hub's **Friends** page (`web/friends/`) is a mock-up: the friends and their scores are made up in `friends.js` so the page can be tried before accounts exist. Your own scores on it are real. Year and Close ask about the same catalog of things as Middleman, so there is one set of facts to keep right.
+The hub's **Leaderboards** page (`web/friends/`) has two boards, both ranked on the day's score. **Everyone** is real: the best twenty for a day or a week, from the API, under names made from each player's client id (like "Swift Otter 42"; names can't be chosen until there are accounts). **Friends** is a mock-up: the friends and their scores are made up in `friends.js` so the page can be tried before accounts exist. Your own scores on it are real. Year and Close ask about the same catalog of things as Middleman, so there is one set of facts to keep right.
 
 ## How it's built
 
@@ -99,6 +100,7 @@ Needs Node 22.5 or newer.
 ```sh
 npm install
 npm run db:migrate:local   # creates the local SQLite database
+echo "RISK_SECRET=\"$(openssl rand -hex 24)\"" > .dev.vars   # Risk's dealing secret for local use (gitignored)
 npm run dev                # http://localhost:8787
 npm test
 ```
@@ -109,6 +111,7 @@ npm test
 npx wrangler login
 npx wrangler d1 create daily-games      # copy the database_id it prints into wrangler.toml
 npm run db:migrate                      # create the tables in the real database
+npx wrangler secret put RISK_SECRET     # paste a long random string: Risk deals every hand from it
 npm run deploy                          # prints your URL, e.g. https://daily-games.<you>.workers.dev
 ```
 

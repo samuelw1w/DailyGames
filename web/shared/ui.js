@@ -128,7 +128,7 @@ export function pointsLine(gameId, result, daily = true) {
   const ring = `<div class="dg-ring" data-points="${pointsFor(gameId, result) ?? 0}"></div>`;
   if (!daily) return ring;
   return ring + (seriesState(activeDay()).open.includes(gameId)
-    ? `<p class="dg-points">Points toward the day's series</p>`
+    ? `<p class="dg-points">Counts toward the day's score</p>`
     : `<p>Played for fun: it isn't one of the games in this day's series.</p>`);
 }
 
@@ -205,7 +205,7 @@ export function lockScreen(gameId, view) {
       <a class="dg-btn plain" href="../../plus/">Or unlock everything with Plus</a>
       <a class="dg-btn plain" href="../../">Back to the hub</a>
     </div>
-    <p class="dg-rank">Unlocking is for good. It doesn't change the all-time total your friends see.</p>
+    <p class="dg-rank">Unlocking is for good. Spending points never changes your scores.</p>
   </section>`;
   view.querySelector("#unlockBtn").addEventListener("click", () => { unlockGame(gameId); location.reload(); });
   return true;

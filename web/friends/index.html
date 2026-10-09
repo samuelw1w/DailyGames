@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b0b0c">
-  <title>Friends · Daily Hub</title>
-  <meta name="description" content="See how your day's score compares with your friends', today and on earlier days.">
+  <title>Leaderboards · Daily Hub</title>
+  <meta name="description" content="The best day's scores from everyone who played, and how yours compares with your friends'.">
   <link rel="stylesheet" href="../shared/theme.css">
   <script src="../shared/blinds.js"></script>
   <link rel="stylesheet" href="friends.css">
@@ -14,10 +14,15 @@
   <div class="dg-app">
     <header class="dg-head">
       <a href="../">Hub</a>
-      <h1>Friends</h1>
+      <h1>Leaderboards</h1>
       <span class="no"></span>
-      <p class="sub">Sample friends, to show how this page will work</p>
+      <p class="sub" id="sub"></p>
     </header>
+
+    <nav class="tabs boards" role="tablist" aria-label="Leaderboard">
+      <button type="button" role="tab" id="board-everyone" aria-selected="true">Everyone</button>
+      <button type="button" role="tab" id="board-friends" aria-selected="false">Friends</button>
+    </nav>
 
     <nav class="tabs" role="tablist" aria-label="Scores for">
       <button type="button" role="tab" id="tab-daily" aria-selected="true">Daily</button>
@@ -32,7 +37,7 @@
 
     <main class="dg-view" id="view"></main>
 
-    <p class="dg-foot">These friends are made up, and so are their scores. Real ones need accounts, which the site doesn't have yet. Your own scores are real.</p>
+    <p class="dg-foot" id="foot"></p>
   </div>
   <script type="module" src="friends.js"></script>
 </body>

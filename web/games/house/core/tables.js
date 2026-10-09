@@ -3,12 +3,17 @@
 //
 // There are no chips. The player sits down with a multiplier of 1.0×; every hand won adds
 // 0.2, every hand lost takes 0.2 away, and a push leaves it alone. Five hands at most, so the
-// day's points end up multiplied by something between 0× and 2×. Because a hand can only be
-// won or lost, every table offers even-money choices only.
+// day's points end up multiplied by something between 0× and 2×. Risk only ever moves points
+// (what unlocks games), never the day's score. Because a hand can only be won or lost, every
+// table offers even-money choices only.
 //
-// Every spin, shoe and dice roll comes from the date and the hand number, so everyone who
-// plays their third hand at the roulette table sees the same spin.
+// Every spin, shoe and dice roll comes from a seed, the table and the hand number. For the
+// daily tables the seed is made on the server from a secret, the day and the player
+// (api/src/risk.js), so everyone gets their own hands and nobody can work them out in advance;
+// the server deals each hand only once the player has committed to it. Practice tables use a
+// random seed in the browser. The functions below call the seed `day`.
 import { hash, mulberry32, shuffle } from "../../../shared/random.js";
+import { DAY_POINTS } from "../../../shared/scoring.js";
 
 export const GAME_ID = "house";
 /** Hands a player may play in a day, at any tables they like. They can stop after any hand. */
@@ -17,8 +22,8 @@ export const HANDS = 5;
 export const STEP = 2;
 export const TABLES = ["roulette", "blackjack", "sicbo", "baccarat", "craps"];
 export const TABLE_NAMES = { roulette: "Roulette", blackjack: "Blackjack", sicbo: "Sic Bo", baccarat: "Baccarat", craps: "Craps" };
-/** Top of the API's score chart: a perfect 1,000-point day doubled. */
-export const MAX_SCORE = 2000;
+/** Top of the API's chart of points after Risk: a perfect day's score doubled. */
+export const MAX_SCORE = 2 * DAY_POINTS;
 
 const rngFor = (day, table, hand) => mulberry32(hash(`${GAME_ID}:${day}:${table}:${hand}`));
 

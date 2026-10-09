@@ -5,6 +5,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap");
 @import url("rolling-number.css");
 @import url("score-ring.css");
+@import url("bell-curve.css");
 
 :root {
   --bg: #0b0b0c; --surface: #161617; --surface-2: #202022; --line: #29292c; --line-2: #3a3a3f;

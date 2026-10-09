@@ -59,3 +59,10 @@ h2.dg-label span { letter-spacing: 0; text-transform: none; font-weight: 400; }
 .week b { font-size: 13px; font-weight: 600; }
 .week em { font-style: normal; font-size: 12px; color: var(--muted); }
 .tally { margin: 0; text-align: center; color: var(--muted); font-size: 14px; }
+
+/* Everyone or Friends: the bigger switch, above the day/week one */
+.tabs.boards { border-color: var(--line-2); }
+.tabs.boards button { padding: 11px 0; font-size: 16px; }
+.tabs.boards button[aria-selected="true"] { background: var(--text); color: var(--bg); }
+/* Your place, when it's below the top twenty */
+.gap { margin: 4px 0 -2px; text-align: center; color: var(--dim); font-size: 13px; }

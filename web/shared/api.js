@@ -7,8 +7,9 @@
 const BASE = (globalThis.document?.querySelector('meta[name="dg-api"]')?.content || "").replace(/\/$/, "");
 const TIMEOUT_MS = 6000;
 
-async function call(path, init = {}) {
-  if (location.protocol === "file:") return null;
+/** Make a request: { status, body }, with status 0 when the API couldn't be reached. */
+async function request(path, init = {}) {
+  if (location.protocol === "file:") return { status: 0, body: null };
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
@@ -17,13 +18,17 @@ async function call(path, init = {}) {
       signal: ctrl.signal,
       headers: { "content-type": "application/json", ...(init.headers || {}) },
     });
-    const body = await res.json().catch(() => null);
-    return res.ok || res.status === 409 ? body : null;
+    return { status: res.status, body: await res.json().catch(() => null) };
   } catch {
-    return null;
+    return { status: 0, body: null };
   } finally {
     clearTimeout(t);
   }
+}
+
+async function call(path, init = {}) {
+  const { status, body } = await request(path, init);
+  return (status >= 200 && status < 300) || status === 409 ? body : null;
 }
 
 /** Record a finished daily play. Returns { score, rank } or null. */
@@ -37,3 +42,15 @@ export const submitPlay = (game, day, clientId, answers) =>
  *  Pass `score` to also get how that score ranks against everyone else. */
 export const getStats = (game, day, score) =>
   call(`/games/${encodeURIComponent(game)}/days/${encodeURIComponent(day)}/stats${score != null ? `?score=${Number(score)}` : ""}`);
+
+/**
+ * Risk, dealt by the server. `action` is "state", "play" or "stop"; `extra` is the hand
+ * ({ table, pick } or { table: "blackjack", move }). Resolves to { status, body }: the run on
+ * success, { error } otherwise, and status 0 when the API couldn't be reached.
+ */
+export const risk = (action, day, clientId, extra = {}) =>
+  request(`/risk/${action}`, { method: "POST", body: JSON.stringify({ day, clientId, ...extra }) });
+
+/** The leaderboard for everyone: the best day's scores for `day`, or over the week to it (`scope` "week"). */
+export const getLeaderboard = (day, clientId, scope = "day") =>
+  call(`/leaderboard/${encodeURIComponent(day)}${scope === "week" ? "?scope=week" : ""}`, { headers: { "x-client-id": clientId } });
