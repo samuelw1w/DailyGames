@@ -113,6 +113,12 @@ export function seriesButton(day) {
   return `<a class="dg-btn" href="../../${dayQuery(day)}">${s.complete && !s.final ? "Finish the day" : "Back to the hub"}</a>`;
 }
 
+/** A plain "Back to the hub" for the bottom of a result screen, unless the series button above already goes there. */
+export function hubButton(day, daily = true) {
+  if (daily && !seriesState(day).next) return "";
+  return `<a class="dg-btn plain" href="../../${dayQuery(day)}">Back to the hub</a>`;
+}
+
 /**
  * The game's score out of 100 as a ring in its colour, which fills in once it is on the page.
  * For a daily result it also says whether those points count toward the day's series;
@@ -162,8 +168,9 @@ export function resultScreen(view, o) {
     <div class="dg-actions">
       ${o.daily ? seriesButton(o.day) : ""}
       <button class="dg-btn plain" id="copyBtn" type="button">Share</button>
-      <button class="dg-btn plain" id="practiceBtn" type="button">${esc(o.practiceLabel ?? "Play a practice game")}</button>
       ${!o.daily ? (hasToday ? `<button class="dg-btn plain" id="backBtn" type="button">Back to today's result</button>` : `<button class="dg-btn plain" id="dailyBtn" type="button">Play today's game</button>`) : ""}
+      ${hubButton(o.day, o.daily)}
+      <button class="dg-link" id="practiceBtn" type="button">${esc(o.practiceLabel ?? "Play a practice game")}</button>
     </div>
   </section>`;
   wireShare(view.querySelector("#copyBtn"), o.share);

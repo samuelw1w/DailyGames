@@ -12,8 +12,7 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "daily-games"
-# Paste the ID printed by `npx wrangler d1 create daily-games` (see README).
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "77581fa6-28c0-4499-8681-5db8652007b8"
 migrations_dir = "api/migrations"
 
 [vars]

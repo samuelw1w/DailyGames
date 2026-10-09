@@ -101,6 +101,7 @@ a { color: inherit; }
 .dg-rank { margin: 0; text-align: center; color: var(--muted); }
 .dg-rank b { color: var(--text); font-weight: 600; }
 .dg-actions { display: flex; flex-direction: column; gap: 10px; }
+.dg-actions .dg-link { align-self: center; }
 
 /* Number games (Year, Close): one thing, a question, a box to type in, and a row per guess */
 .ng { display: flex; flex-direction: column; gap: 18px; }
