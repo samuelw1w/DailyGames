@@ -5,6 +5,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap");
 @import url("rolling-number.css");
 @import url("score-ring.css");
+@import url("bell-curve.css");
 
 :root {
   --bg: #0b0b0c; --surface: #161617; --surface-2: #202022; --line: #29292c; --line-2: #3a3a3f;
@@ -101,6 +102,7 @@ a { color: inherit; }
 .dg-rank { margin: 0; text-align: center; color: var(--muted); }
 .dg-rank b { color: var(--text); font-weight: 600; }
 .dg-actions { display: flex; flex-direction: column; gap: 10px; }
+.dg-actions .dg-link { align-self: center; }
 
 /* Number games (Year, Close): one thing, a question, a box to type in, and a row per guess */
 .ng { display: flex; flex-direction: column; gap: 18px; }

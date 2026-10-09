@@ -156,6 +156,12 @@ export function seriesButton(day) {
   return `<a class="dg-btn" href="../../${dayQuery(day)}">${s.complete && !s.final ? "Finish the day" : "Back to the hub"}</a>`;
 }
 
+/** A plain "Back to the hub" for the bottom of a result screen, unless the series button above already goes there. */
+export function hubButton(day, daily = true) {
+  if (daily && !seriesState(day).next) return "";
+  return `<a class="dg-btn plain" href="../../${dayQuery(day)}">Back to the hub</a>`;
+}
+
 /**
  * The game's score out of 100 as a ring in its colour, which fills in once it is on the page.
  * For a daily result it also says whether those points count toward the day's series;
@@ -165,7 +171,7 @@ export function pointsLine(gameId, result, daily = true) {
   const ring = `<div class="dg-ring" data-points="${pointsFor(gameId, result) ?? 0}"></div>`;
   if (!daily) return ring;
   return ring + (seriesState(activeDay()).open.includes(gameId)
-    ? `<p class="dg-points">Points toward the day's series</p>`
+    ? `<p class="dg-points">Counts toward the day's score</p>`
     : `<p>Played for fun: it isn't one of the games in this day's series.</p>`);
 }
 
@@ -205,8 +211,9 @@ export function resultScreen(view, o) {
     <div class="dg-actions">
       ${o.daily ? seriesButton(o.day) : ""}
       <button class="dg-btn plain" id="copyBtn" type="button">Share</button>
-      <button class="dg-btn plain" id="practiceBtn" type="button">${esc(o.practiceLabel ?? "Play a practice game")}</button>
       ${!o.daily ? (hasToday ? `<button class="dg-btn plain" id="backBtn" type="button">Back to today's result</button>` : `<button class="dg-btn plain" id="dailyBtn" type="button">Play today's game</button>`) : ""}
+      ${hubButton(o.day, o.daily)}
+      <button class="dg-link" id="practiceBtn" type="button">${esc(o.practiceLabel ?? "Play a practice game")}</button>
     </div>
   </section>`;
   wireShare(view.querySelector("#copyBtn"), o.share);
@@ -241,7 +248,7 @@ export function lockScreen(gameId, view) {
       <a class="dg-btn plain" href="../../plus/">Or unlock everything with Plus</a>
       <a class="dg-btn plain" href="../../">Back to the hub</a>
     </div>
-    <p class="dg-rank">Unlocking is for good. It doesn't change the all-time total your friends see.</p>
+    <p class="dg-rank">Unlocking is for good. Spending points never changes your scores.</p>
   </section>`;
   view.querySelector("#unlockBtn").addEventListener("click", () => { unlockGame(gameId); location.reload(); });
   return true;

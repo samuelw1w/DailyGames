@@ -7,8 +7,9 @@
 const BASE = (globalThis.document?.querySelector('meta[name="dg-api"]')?.content || "").replace(/\/$/, "");
 const TIMEOUT_MS = 6000;
 
-async function call(path, init = {}) {
-  if (location.protocol === "file:") return null;
+/** Make a request: { status, body }, with status 0 when the API couldn't be reached. */
+async function request(path, init = {}) {
+  if (location.protocol === "file:") return { status: 0, body: null };
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
@@ -17,13 +18,17 @@ async function call(path, init = {}) {
       signal: ctrl.signal,
       headers: { "content-type": "application/json", ...(init.headers || {}) },
     });
-    const body = await res.json().catch(() => null);
-    return res.ok || res.status === 409 ? body : null;
+    return { status: res.status, body: await res.json().catch(() => null) };
   } catch {
-    return null;
+    return { status: 0, body: null };
   } finally {
     clearTimeout(t);
   }
+}
+
+async function call(path, init = {}) {
+  const { status, body } = await request(path, init);
+  return (status >= 200 && status < 300) || status === 409 ? body : null;
 }
 
 /** Record a finished daily play. Returns { score, rank } or null. */

@@ -5,12 +5,20 @@ import { readFileSync, readdirSync } from "node:fs";
 
 const MIGRATIONS = new URL("../../api/migrations/", import.meta.url);
 
+// D1 numbers its parameters (?1, ?2...). Some Node versions can't bind those by position, so
+// each ?N becomes a plain ? and the arguments are laid out in the order they appear.
+function positional(sql, args) {
+  const out = [];
+  return { sql: sql.replace(/\?(\d+)/g, (_, n) => { out.push(args[n - 1]); return "?"; }), args: /\?\d/.test(sql) ? out : args };
+}
+
 class Bound {
   constructor(db, sql, args) { this.db = db; this.sql = sql; this.args = args; }
   _exec() {
-    const stmt = this.db.prepare(this.sql);
-    if (/^\s*select/i.test(this.sql)) return { results: stmt.all(...this.args), meta: { changes: 0 } };
-    const info = stmt.run(...this.args);
+    const { sql, args } = positional(this.sql, this.args);
+    const stmt = this.db.prepare(sql);
+    if (/^\s*select/i.test(sql)) return { results: stmt.all(...args), meta: { changes: 0 } };
+    const info = stmt.run(...args);
     return { results: [], meta: { changes: Number(info.changes) } };
   }
   async first() { return this._exec().results[0] ?? null; }

@@ -1,0 +1,40 @@
+/* BellCurve: where today's score sits among everyone's. Colours come from the theme tokens. */
+.bell { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px 14px; }
+.bell svg { display: block; width: 100%; height: auto; overflow: visible; }
+.bell-head { margin: 0; color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+.bell-head b { color: var(--text); font-weight: 600; }
+.bell-foot { margin: 0; color: var(--dim); font-size: 13px; font-variant-numeric: tabular-nums; }
+.bell-foot b { color: var(--muted); font-weight: 600; }
+
+.bell-bars rect { fill: var(--surface-2); }
+.bell-area { fill: color-mix(in srgb, var(--text) 5%, transparent); }
+.bell-below { fill: color-mix(in srgb, var(--text) 22%, transparent); }
+.bell-line { fill: none; stroke: var(--text); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.bell-axis { stroke: var(--line-2); stroke-width: 1; }
+.bell-mean line { stroke: var(--dim); stroke-width: 1; stroke-dasharray: 3 3; }
+.bell-you line { stroke: var(--text); stroke-width: 1.5; }
+.bell-you circle { fill: var(--text); stroke: var(--bg); stroke-width: 2; }
+.bell-you text { fill: var(--text); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bell-ticks text { fill: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+/* The entrance: bars rise, the line draws itself left to right, the area under it fades in,
+   the part below your score sweeps across, then the marker drops onto the curve. */
+.bell-bars rect { transform-box: fill-box; transform-origin: bottom; transform: scaleY(0); }
+.bell-line { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.bell-area, .bell-mean { opacity: 0; }
+.bell-sweep { transform: scaleX(0); transform-box: fill-box; transform-origin: left; }
+.bell-you { opacity: 0; transform: translateY(-14px); }
+
+.bell-in .bell-bars rect { transform: none; transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.bell-in .bell-bars rect:nth-child(2n) { transition-delay: 0.04s; }
+.bell-in .bell-bars rect:nth-child(3n) { transition-delay: 0.08s; }
+.bell-in .bell-line { stroke-dashoffset: 0; transition: stroke-dashoffset 0.9s cubic-bezier(0.45, 0, 0.2, 1) 0.1s; }
+.bell-in .bell-area { opacity: 1; transition: opacity 0.6s ease 0.5s; }
+.bell-in .bell-mean { opacity: 1; transition: opacity 0.4s ease 0.9s; }
+.bell-in .bell-sweep { transform: none; transition: transform 1.1s cubic-bezier(0.3, 0, 0.2, 1) 0.6s; }
+.bell-in .bell-you { opacity: 1; transform: none; transition: opacity 0.3s ease 1.5s, transform 0.5s cubic-bezier(0.3, 1.6, 0.5, 1) 1.5s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bell * { transition: none !important; }
+}
+.bell-you .bell-stem { stroke: var(--line-2); stroke-width: 1; stroke-dasharray: 2 3; }

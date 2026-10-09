@@ -3,6 +3,13 @@
 import { dayKey, parseDayKey } from "./daily.js";
 
 const PREFIX = "dg.v1";
+/**
+ * The day this page was opened on. A result saved for an earlier day than this was played
+ * later (a Plus member going back): it keeps its score, but it doesn't count for streaks or
+ * leaderboards. Using the day the page opened, not the moment of saving, means a game started
+ * just before midnight still counts for the day it was started on.
+ */
+const OPENED = dayKey();
 
 function read(key) {
   try {
@@ -37,14 +44,19 @@ export function gameStore(gameId) {
     getDay: (day = dayKey()) => read(k(`day.${day}`)),
     saveDay(day, result, score) {
       write(k(`day.${day}`), result);
+      if (day < OPENED) write(k("late"), { ...(read(k("late")) || {}), [day]: OPENED });
       if (read(k("progress"))?.day === day) write(k("progress"), null); // that day is finished: nothing left to pick up
       const h = read(k("history")) || {};
       h[day] = score;
       write(k("history"), h);
     },
     history: () => read(k("history")) || {},
+    /** Was that day's result played on the day itself? */
+    onTime: (day) => !(read(k("late")) || {})[day],
     stats() {
       const h = read(k("history")) || {};
+      const late = read(k("late")) || {};
+      for (const day of Object.keys(late)) delete h[day]; // days played later don't keep a streak going
       let streak = 0;
       const d = parseDayKey(dayKey());
       if (h[dayKey(d)] == null) d.setDate(d.getDate() - 1); // today not played yet: streak still alive
@@ -52,7 +64,7 @@ export function gameStore(gameId) {
         streak++;
         d.setDate(d.getDate() - 1);
       }
-      const scores = Object.values(h);
+      const scores = Object.values(read(k("history")) || {});
       return { streak, played: scores.length, best: scores.length ? Math.max(...scores) : 0 };
     },
     flag: (name) => read(k(`flag.${name}`)),

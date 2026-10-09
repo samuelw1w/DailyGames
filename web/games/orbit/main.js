@@ -6,7 +6,7 @@ import { gameStore, clientId } from "../../shared/storage.js";
 import { activeDay } from "../../shared/account.js";
 import { submitPlay } from "../../shared/api.js";
 import { confetti } from "../../shared/confetti.js";
-import { modal, wireShare, startCountdown, showRank, seriesButton, pointsLine, lockScreen } from "../../shared/ui.js";
+import { modal, wireShare, startCountdown, showRank, seriesButton, hubButton, pointsLine, lockScreen } from "../../shared/ui.js";
 import { GAMES } from "../../shared/registry.js";
 
 const META = GAMES.find((g) => g.id === GAME_ID);
@@ -346,8 +346,9 @@ function showSummary(mode, level, result, paths, sent = null) {
     <div class="dg-actions">
       ${daily ? seriesButton(TODAY) : ""}
       <button class="dg-btn plain" id="copyBtn" type="button">Share</button>
-      <button class="dg-btn plain" id="practiceBtn" type="button">${daily ? "Play a practice level" : "Another practice level"}</button>
       ${!daily ? (store.getDay(TODAY) ? `<button class="dg-btn plain" id="backBtn" type="button">Back to today's result</button>` : `<button class="dg-btn plain" id="dailyBtn" type="button">Play today's puzzle</button>`) : ""}
+      ${hubButton(TODAY, daily)}
+      <button class="dg-link" id="practiceBtn" type="button">${daily ? "Play a practice level" : "Another practice level"}</button>
     </div>
   </section>`;
 

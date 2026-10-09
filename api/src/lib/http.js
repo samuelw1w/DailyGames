@@ -32,7 +32,7 @@ export function corsHeaders(request, env) {
   return {
     "access-control-allow-origin": origin,
     "access-control-allow-methods": "GET, POST, OPTIONS",
-    "access-control-allow-headers": "content-type",
+    "access-control-allow-headers": "content-type, x-client-id",
     "access-control-max-age": "86400",
     vary: "origin",
   };

@@ -45,7 +45,7 @@ export async function submitPlay(request, env, gameId) {
   if (!isPlayableToday(day)) throw new HttpError(400, "day must be today's date (YYYY-MM-DD) in your time zone.");
   if (typeof clientId !== "string" || !CLIENT_ID_RE.test(clientId)) throw new HttpError(400, "clientId is missing or malformed.");
 
-  const { score, picks, detail } = game.checkAnswers(day, answers);
+  const { score, picks, detail } = await game.checkAnswers(day, answers, { clientId, db: env.DB });
 
   const inserted = await env.DB
     .prepare("INSERT INTO plays (game, day, client_id, score, detail) VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT (game, day, client_id) DO NOTHING")
@@ -82,12 +82,14 @@ export async function dayStats(request, env, gameId, day) {
 
   // Score histogram in 10 equal buckets (the max score lands in the last one).
   const histogram = Array(10).fill(0);
-  let players = 0, sum = 0;
+  let players = 0, sum = 0, squares = 0;
   for (const { score, n } of scores.results) {
     histogram[Math.min(9, Math.floor((score / game.maxScore) * 10))] += n;
     players += n;
     sum += score * n;
+    squares += score * score * n;
   }
+  const mean = players ? sum / players : 0;
 
   const rounds = new Map();
   for (const { round, answer, n } of picks.results) {
@@ -101,7 +103,10 @@ export async function dayStats(request, env, gameId, day) {
     game: game.id,
     day,
     players,
-    averageScore: players ? Math.round(sum / players) : null,
+    maxScore: game.maxScore,
+    averageScore: players ? Math.round(mean) : null,
+    // The standard deviation of the scores, so a page can draw the day's bell curve.
+    spread: players ? Math.round(Math.sqrt(Math.max(0, squares / players - mean * mean))) : null,
     histogram,
     rounds: [...rounds.values()],
   };

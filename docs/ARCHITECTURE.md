@@ -33,6 +33,12 @@ The date is the player's **local** date (`shared/daily.js`), so the puzzle flips
 - **On the server** (`api/migrations/`):
   - `plays`: one row per finished daily game: game, day, clientId, server-computed score, and JSON detail. `UNIQUE (game, day, client_id)` means one play per browser per day; the first result counts.
   - `picks`: a running count of each answer per round, so "most picked" is one indexed read.
+  - `risk_runs`: one row per player per day for Risk: the hands dealt so far, so a hand is dealt once and only after the player commits to it.
+
+### The day's score, and Risk
+The day's score (0 to 600) is posted as the `series` game with only the lineup; the server adds up the plays it already holds (`web/shared/scoring.js` turns each game's server score into 0 to 100). That score feeds the bell curve, the leaderboards, and Risk's starting points.
+
+Risk is the one game the browser can't deal: its hands would be readable in the JS and the same for everyone. `api/src/risk.js` deals each hand from an HMAC of the day and client id under the `RISK_SECRET` secret, after the player has chosen a table and side, and stores it in `risk_runs`. Practice tables still deal in the browser from a random seed.
 
 Both tables are keyed by `game`, so new games need no schema changes.
 
