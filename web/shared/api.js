@@ -31,11 +31,11 @@ async function call(path, init = {}) {
   return (status >= 200 && status < 300) || status === 409 ? body : null;
 }
 
-/** Record a finished daily play. Returns { score, rank } or null. */
-export const submitPlay = (game, day, clientId, answers) =>
+/** Record a finished daily play. Returns { score, rank } or null. `extra` adds fields to the body (the series' `human` token). */
+export const submitPlay = (game, day, clientId, answers, extra = {}) =>
   call(`/games/${encodeURIComponent(game)}/plays`, {
     method: "POST",
-    body: JSON.stringify({ day, clientId, answers }),
+    body: JSON.stringify({ day, clientId, answers, ...extra }),
   });
 
 /** Crowd stats for a day: players, score histogram, top answers per round.

@@ -2,6 +2,7 @@
 import { GAMES } from "./games/index.js";
 import { HttpError, json, readJson } from "./lib/http.js";
 import { isPlayableToday, isRevealed } from "./lib/days.js";
+import { isHuman } from "./lib/turnstile.js";
 
 const CLIENT_ID_RE = /^[A-Za-z0-9-]{8,64}$/;
 const TOP_ANSWERS = 5;
@@ -16,7 +17,7 @@ function gameOr404(id) {
  * How a score compares with everyone else's for that day. The asker always counts as one
  * of `players`, whether or not their play is stored: their own row (found by `clientId`)
  * is left out of the comparison. Without a clientId, a stored play with the same score
- * is assumed to be theirs.
+ * is assumed to be theirs. Hidden plays (see 0003_trust.sql) only count for their own player.
  */
 async function rankFor(db, game, day, score, clientId = null) {
   const row = await db
@@ -25,7 +26,7 @@ async function rankFor(db, game, day, score, clientId = null) {
               SUM(CASE WHEN score < ?1 AND client_id IS NOT ?4 THEN 1 ELSE 0 END) AS below,
               SUM(CASE WHEN client_id = ?4 THEN 1 ELSE 0 END) AS mine,
               SUM(CASE WHEN score = ?1 THEN 1 ELSE 0 END) AS tied
-       FROM plays WHERE game = ?2 AND day = ?3`,
+       FROM plays WHERE game = ?2 AND day = ?3 AND (hidden = 0 OR client_id IS ?4)`,
     )
     .bind(score, game, day, clientId)
     .first();
@@ -37,19 +38,27 @@ async function rankFor(db, game, day, score, clientId = null) {
   return { players: others + 1, betterThan };
 }
 
-/** POST /api/games/:game/plays  { day, clientId, answers } */
+/**
+ * POST /api/games/:game/plays  { day, clientId, answers, human? }
+ * Games marked `gated` (the day's series) also carry a Turnstile token in `human`. A play that
+ * fails it, or that the game itself flags, is stored and scored as usual but hidden from
+ * everyone else, so the player notices nothing and Risk still has its score to play for.
+ */
 export async function submitPlay(request, env, gameId) {
   const game = gameOr404(gameId);
   const body = await readJson(request);
-  const { day, clientId, answers } = body ?? {};
+  const { day, clientId, answers, human } = body ?? {};
   if (!isPlayableToday(day)) throw new HttpError(400, "day must be today's date (YYYY-MM-DD) in your time zone.");
   if (typeof clientId !== "string" || !CLIENT_ID_RE.test(clientId)) throw new HttpError(400, "clientId is missing or malformed.");
 
-  const { score, picks, detail } = await game.checkAnswers(day, answers, { clientId, db: env.DB });
+  const { score, picks, detail, flags: flagged = [] } = await game.checkAnswers(day, answers, { clientId, db: env.DB });
+  const flags = [...flagged];
+  if (game.gated && !(await isHuman(human, request, env))) flags.push("no-human");
+  const hidden = flags.length > 0;
 
   const inserted = await env.DB
-    .prepare("INSERT INTO plays (game, day, client_id, score, detail) VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT (game, day, client_id) DO NOTHING")
-    .bind(game.id, day, clientId, score, JSON.stringify(detail))
+    .prepare("INSERT INTO plays (game, day, client_id, score, detail, hidden) VALUES (?1, ?2, ?3, ?4, ?5, ?6) ON CONFLICT (game, day, client_id) DO NOTHING")
+    .bind(game.id, day, clientId, score, JSON.stringify(hidden ? { ...detail, flags } : detail), hidden ? 1 : 0)
     .run();
 
   if (!inserted.meta?.changes) {
@@ -59,7 +68,7 @@ export async function submitPlay(request, env, gameId) {
     return json({ alreadyPlayed: true, score: prior.score, rank }, 409);
   }
 
-  if (picks.length) {
+  if (picks.length && !hidden) {
     const upsert = env.DB.prepare(
       "INSERT INTO picks (game, day, round, answer, n) VALUES (?1, ?2, ?3, ?4, 1) ON CONFLICT (game, day, round, answer) DO UPDATE SET n = n + 1",
     );
@@ -76,7 +85,7 @@ export async function dayStats(request, env, gameId, day) {
   if (!isRevealed(day)) throw new HttpError(400, "day must be a valid date that isn't in the future.");
 
   const [scores, picks] = await env.DB.batch([
-    env.DB.prepare("SELECT score, COUNT(*) AS n FROM plays WHERE game = ?1 AND day = ?2 GROUP BY score").bind(game.id, day),
+    env.DB.prepare("SELECT score, COUNT(*) AS n FROM plays WHERE game = ?1 AND day = ?2 AND hidden = 0 GROUP BY score").bind(game.id, day),
     env.DB.prepare("SELECT round, answer, n FROM picks WHERE game = ?1 AND day = ?2 ORDER BY round, n DESC, answer").bind(game.id, day),
   ]);
 

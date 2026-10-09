@@ -31,7 +31,7 @@ The date is the player's **local** date (`shared/daily.js`), so the puzzle flips
 ### Storage
 - **In the browser** (`shared/storage.js`): each game's daily results, history and streak, under keys like `dg.v1.middleman.day.2026-10-05`. Plus one anonymous `clientId` per browser.
 - **On the server** (`api/migrations/`):
-  - `plays`: one row per finished daily game: game, day, clientId, server-computed score, and JSON detail. `UNIQUE (game, day, client_id)` means one play per browser per day; the first result counts.
+  - `plays`: one row per finished daily game: game, day, clientId, server-computed score, JSON detail, and a `hidden` flag (see "Keeping the boards honest"). `UNIQUE (game, day, client_id)` means one play per browser per day; the first result counts.
   - `picks`: a running count of each answer per round, so "most picked" is one indexed read.
   - `risk_runs`: one row per player per day for Risk: the hands dealt so far, so a hand is dealt once and only after the player commits to it.
 
@@ -42,11 +42,20 @@ Risk is the one game the browser can't deal: its hands would be readable in the 
 
 Both tables are keyed by `game`, so new games need no schema changes.
 
+### Keeping the boards honest
+Every puzzle can be solved in the browser, so a script could post perfect days under freshly made client ids. Three layers make that expensive. None of them gets in a real player's way:
+
+- **Rate limit.** Every `POST /api/*` is capped per IP (`WRITE_LIMITER` in `wrangler.toml`, 60 a minute) and answers `429` past it.
+- **Turnstile on the series.** The day's `series` submit carries a token from an invisible [Turnstile](https://developers.cloudflare.com/turnstile/) widget (`web/shared/human.js`). The server checks it with `TURNSTILE_SECRET` (`api/src/lib/turnstile.js`). Only that one submit a day is gated, because it's what the leaderboards rank.
+- **Timing.** The server knows when each game's play arrived. A lineup finished faster than a person could play it (`api/src/games/series.js → timingFlags`) is flagged.
+
+A play that fails a check is **hidden, not rejected**. It is stored and scored as usual, and its reasons go in `detail.flags`. Risk still plays for it, and its player still sees it on the boards with their place. Everyone else's leaderboards, bell curve and picks leave it out. A real player whose ad blocker stops Turnstile loses nothing but their public row, and a script gets no sign that it was caught.
+
 ### Hosting
 `wrangler.toml` points `[assets]` at `web/`. Cloudflare serves those files directly from its edge, which is free and doesn't count as Worker requests. Only `/api/*` runs Worker code. Site and API share an origin, so no CORS setup is needed. If you ever host the site elsewhere, set `ALLOWED_ORIGINS` and add `<meta name="dg-api" content="https://your-api">` to the pages.
 
 ## Known limits and next steps
-- **One play per browser, not per person.** Clearing storage or using another browser allows another play. Good enough for crowd stats. Accounts would fix it if leaderboards are added.
-- **No rate limiting yet.** Before promoting the site widely, add Cloudflare's rate-limiting rules on `/api/*/plays`, or [Turnstile](https://developers.cloudflare.com/turnstile/) on submit.
+- **One play per browser, not per person.** Clearing storage or using another browser allows another play. Turnstile and the timing check make faking players slow, not impossible. Accounts would close the gap.
+- **Only the series is gated.** The single games' plays are rate limited but not checked by Turnstile, so a script could still nudge a game's bell curve or most-picked answers.
 - **Streaks are per browser.** Cross-device streaks need accounts.
 - **Catalog edits change puzzles.** Puzzles are derived from the catalog, so editing it changes every date's puzzle, past days included. If stable history matters later, store each day's generated puzzle in D1 the first time it's requested.

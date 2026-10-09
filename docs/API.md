@@ -2,6 +2,8 @@
 
 Base path: `/api`. All bodies are JSON. Errors look like `{ "error": "Human-readable message" }`.
 
+Every `POST` is rate limited per IP (60 a minute). Past that it answers `429` with `retry-after: 60`.
+
 ### `GET /api/health`
 `200 { "ok": true }`
 
@@ -30,6 +32,7 @@ Record a finished daily game. Call this once, when the player finishes.
 | | Link: `{ "answers": [{ "guesses": ["rise", "fall"], "hint": true }, …] }`, one entry per pair. |
 | | The day (id `series`): `{ "lineup": { "play": ["orbit", "pins", "stop"], "know": ["middleman", "year", "jot"] } }`, up to three different games from each act. The server adds up the plays it already holds for this client and day, each turned into 0 to 100 (`web/shared/scoring.js`), so every game in the lineup must have been posted first (`400` otherwise). This is the day's score: what the bell curve and the leaderboards use, and what Risk plays for. |
 | | Risk (id `house`) can't be posted here (`400`): its hands are dealt by the server, see `/api/risk` below. |
+| `human` | Only for `series`: a Cloudflare Turnstile token (`web/shared/human.js`). Optional, but without a valid one the day is hidden from other players (below). |
 
 Responses:
 - `201 { "score": 412, "rank": { "players": 120, "betterThan": 64 } }`
@@ -37,6 +40,8 @@ Responses:
 - `400` for invalid input, `404` for an unknown game.
 
 `betterThan` is the percentage of *other* players today with a lower score.
+
+**Hidden plays.** A `series` play without a valid `human` token, or with its games finished faster than a person could play them, is still stored and scored and answers `201` as usual. It is left out of everything other players see: the leaderboards, `players`, the histogram and the picks. Its own player still sees it, through their `clientId` or `x-client-id`. Risk plays for it as normal. The reasons are kept in the play's `detail.flags` (`"no-human"`, `"too-fast"`).
 
 Orbit's score is `6 − jumps used` for reaching the goal (so 5 is a one-jump win) and `0` for running out of jumps. Pins is the bowling score out of 90 and Skip the best stone's skips out of 30. Stop, Year, Close, Jot and Link score 0 to 100 directly. Hole scores 4 for par, one more for each stroke under and one fewer for each over (0 to 8). The day (`series`) is 0 to 600. Risk's `house` play, recorded by the server when a run ends, is the points it made: the day's score times the multiplier (1.0× plus or minus 0.2× per hand), so 0 to 1,200.
 

@@ -10,6 +10,7 @@ import { gameStore, clientId } from "./storage.js";
 import { dayKey, parseDayKey } from "./daily.js";
 import { isUnlocked, spentPoints } from "./account.js";
 import { submitPlay } from "./api.js";
+import { humanToken } from "./human.js";
 import { ACTS, ORDER, GAME_POINTS, PICKS, DAY_POINTS, pointsFor } from "./scoring.js";
 
 export { ACTS, ORDER, GAME_POINTS, PICKS, DAY_POINTS, pointsFor };
@@ -129,13 +130,14 @@ export function saveHouse(day, base, bankroll, deltas) {
 /**
  * Send a finished day's lineup to the server, which works out the score from the plays it
  * already holds. That score is what the day is ranked on (the bell curve, the leaderboard)
- * and what Risk starts from. Sent once; resolves to true once the server has it, or null.
+ * and what Risk starts from. Sent once, with a Turnstile token so the server can tell it came
+ * from a browser; resolves to true once the server has it, or null.
  */
 export async function reportDay(day = dayKey()) {
   const s = seriesState(day), store = gameStore("series");
   if (!s.complete || s.late) return null;
   if (store.flag(`sent.${day}`)) return true;
-  const res = await submitPlay("series", day, clientId(), { lineup: s.lineup });
+  const res = await submitPlay("series", day, clientId(), { lineup: s.lineup }, { human: await humanToken() });
   if (!res) return null;
   store.setFlag(`sent.${day}`, true);
   return true;

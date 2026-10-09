@@ -1,9 +1,10 @@
 // Small HTTP helpers: JSON responses, errors, CORS.
 
 export class HttpError extends Error {
-  constructor(status, message) {
+  constructor(status, message, headers = {}) {
     super(message);
     this.status = status;
+    this.headers = headers;
   }
 }
 
