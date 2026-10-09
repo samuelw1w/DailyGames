@@ -75,9 +75,9 @@ export function modal({ title, body, button = "Got it", onClose }) {
 
 /**
  * The address put at the end of every shared result, so friends know where to play.
- * This is a placeholder name: change it to the real site once there is one.
+ * The free Cloudflare address for now: change it to the real domain once there is one.
  */
-export const SITE = "tenaday.games";
+export const SITE = "daily-games.tenaday.workers.dev";
 
 /**
  * Open the share sheet: a preview of exactly what will be sent, and a few ways to send it.
